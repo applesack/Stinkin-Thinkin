@@ -19,5 +19,8 @@ public class ListNode {
     ListNode(int val, ListNode next) {
         this.val = val;
         this.next = next;
+        int[] arr1 = new int[3];
+        int[] arr2 = new int[3];
+        int[] arr = new int[arr1.length + arr2.length];
     }
 }
