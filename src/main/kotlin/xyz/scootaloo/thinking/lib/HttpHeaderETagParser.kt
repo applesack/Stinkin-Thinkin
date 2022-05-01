@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package xyz.scootaloo.thinking.lib
 
 import io.vertx.core.json.JsonObject
@@ -18,17 +20,17 @@ private val invalidETag = ETag(false, "")
 
 @Version("1")
 @TestOnly
-fun parseETagHeader(text: String): Pair<Boolean, ETag> {
-    val (valid, json) = parseETagHeaderAsJson(text)
+fun HttpHeader.parseETag(text: String): Pair<Boolean, ETag> {
+    val (valid, json) = parseETagAsJson(text)
     return if (!valid) {
         false to invalidETag
     } else {
-        true to etagFromJson(json)
+        true to HttpHeader.asETag(json)
     }
 }
 
 @Version("1")
-fun parseETagHeaderAsJson(text: String): Pair<Boolean, JsonObject> {
+fun HttpHeader.parseETagAsJson(text: String): Pair<Boolean, JsonObject> {
     var rest = text.trim()
     val weak = rest.startsWith(weakMark, true)
     rest = if (weak) rest.substring(2) else rest
@@ -45,7 +47,7 @@ fun parseETagHeaderAsJson(text: String): Pair<Boolean, JsonObject> {
     }
 }
 
-fun etagFromJson(json: JsonObject): ETag {
+fun HttpHeader.asETag(json: JsonObject): ETag {
     return ETag(
         json.getBoolean(ETagJsonStruct.weak),
         json.getString(ETagJsonStruct.name)
@@ -55,7 +57,7 @@ fun etagFromJson(json: JsonObject): ETag {
 class LibUnitTest1 : TestDsl {
 
     @Test
-    fun testETag() {
+    fun testETag() = HttpHeader.run {
         val normalCase: (Pair<Boolean, ETag>) -> Unit = { (valid, etag) ->
             valid shouldBe true
             etag.run {
@@ -64,15 +66,15 @@ class LibUnitTest1 : TestDsl {
             }
         }
 
-        parseETagHeader(""" \W"I am a Tag" """) check normalCase
+        parseETag(""" \W"I am a Tag" """) check normalCase
 
-        parseETagHeader(""" \w"I am a Tag" """) check normalCase
+        parseETag(""" \w"I am a Tag" """) check normalCase
 
-        parseETagHeader("""\wI am a Tag""") check normalCase
+        parseETag("""\wI am a Tag""") check normalCase
 
-        parseETagHeader("""\wI am a Tag  """) check normalCase
+        parseETag("""\wI am a Tag  """) check normalCase
 
-        parseETagHeader(""" "I am a Tag """) check { (valid, etag) ->
+        parseETag(""" "I am a Tag """) check { (valid, etag) ->
             valid shouldBe true
             etag.run {
                 this.weak shouldBe false
@@ -80,7 +82,7 @@ class LibUnitTest1 : TestDsl {
             }
         }
 
-        parseETagHeader("""""") check { (valid, _) ->
+        parseETag("""""") check { (valid, _) ->
             valid shouldBe false
         }
     }
