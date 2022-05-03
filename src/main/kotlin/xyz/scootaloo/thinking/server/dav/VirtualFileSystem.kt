@@ -1,10 +1,10 @@
-package xyz.scootaloo.thinking.struct.dav
+package xyz.scootaloo.thinking.server.dav
 
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import xyz.scootaloo.thinking.lang.headers
 import xyz.scootaloo.thinking.lang.ifNotNull
-import xyz.scootaloo.thinking.lang.invoke
+import xyz.scootaloo.thinking.lang.Constant
 import java.util.*
 
 /**
@@ -120,13 +120,13 @@ object VirtualFileSystem {
 
     class Options private constructor() {
         suspend fun lock(message: Message<JsonObject>) {
-           val (hitNode, state, filename) = search(message.headers[Constant.EB_H_PATH])
-            if (state == SearchStatus.END) {
-                LockManager.lock(hitNode, filename, message)
-            } else {
-                // 客户端尝试锁定不存在的资源, 响应204状态码; 9.10.4
-                message { replyWithHttp204() }
-            }
+//           val (hitNode, state, filename) = search(message.headers[Constant.EB_H_PATH])
+//            if (state == SearchStatus.END) {
+//                LockManager.lock(hitNode, filename, message)
+//            } else {
+//                // 客户端尝试锁定不存在的资源, 响应204状态码; 9.10.4
+////                message { replyWithHttp204() }
+//            }
         }
 
         fun unlock(message: Message<JsonObject>) {

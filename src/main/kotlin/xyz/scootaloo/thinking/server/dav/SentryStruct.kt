@@ -1,4 +1,4 @@
-package xyz.scootaloo.thinking.struct.dav
+package xyz.scootaloo.thinking.server.dav
 
 import xyz.scootaloo.thinking.lang.Nameable
 import xyz.scootaloo.thinking.util.NameGroup

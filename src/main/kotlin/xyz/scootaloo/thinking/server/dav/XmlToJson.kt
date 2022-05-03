@@ -1,4 +1,4 @@
-package xyz.scootaloo.thinking.struct.dav
+package xyz.scootaloo.thinking.server.dav
 
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
@@ -11,6 +11,7 @@ import org.dom4j.Element
 import xyz.scootaloo.thinking.lang.ValueHolder
 import xyz.scootaloo.thinking.lang.like
 import xyz.scootaloo.thinking.lang.set
+import xyz.scootaloo.thinking.lang.Constant
 
 /**
  * 1. -> 接收客户端请求: 在handler中解析xml, 将xml信息解析为json
@@ -37,6 +38,10 @@ private object DAVCommonLabels {
     const val write = "write"
 }
 
+object DAVTopLabels {
+    const val lockInfo = "lockInfo"
+}
+
 /**
  * ```json
  * {
@@ -58,40 +63,6 @@ interface DAVStructParser {
     fun respJson2xml(json: JsonObject): String
 }
 
-object DAVHeaderFormatter {
-    /**
-     * [text] 请求头中的If头, 它的格式如下
-     *
-     * If = "If" ":" ( 1*No-tag-list | 1*Tagged-list )
-     * List = "(" 1*Condition ")"
-     * Condition = ["Not"] (State-token | "[" entity-tag "]")
-     *             ; entity-tag: see Section 3.11 of [RFC2616]
-     *             ; No LWS allowed between "[", entity-tag and "]"
-     *
-     * State-token = Coded-URL
-     *
-     * Resource-Tag = "<" Simple-ref ">"
-     *                ; Simple-ref: see Section 8.3
-     *                ; No LWS allowed in Resource-Tag
-     *
-     * - 包含一组用括号括起来的条件, 这些条件可能用Not这个标记开头,
-     * - 内部元素用'['']'括起来, 表示ETag
-     * - 内部元素用'<''>'括起来, 表示资源标记
-     *
-     * 例10.6.6 If: (<urn:uuid:181d4fae-7d8c-11d0-a765-00a0c91e6bf2>["I am an ETag"])(["I am another ETag"])
-     * ```json
-     * {
-     *     "token": ["urn:uuid:181d4fae-7d8c-11d0-a765-00a0c91e6bf2"],
-     *     "etag": ["I am an ETag", "I am another ETag"]
-     * }
-     * ```
-     */
-    fun parseIf(text: String): JsonObject {
-        // https://datatracker.ietf.org/doc/html/rfc4918#section-10.4
-        TODO()
-    }
-}
-
 interface DAVXmlHelper {
     fun parseLockInfo(xml: String): Pair<Boolean, JsonObject> {
         val document = safeParseXml(xml) ?: return false to INVALID_JSON
@@ -106,12 +77,14 @@ interface DAVXmlHelper {
     fun Element.takeOwner(): String {
         val (exists, owner) = access("${DAVCommonLabels.owner}.href") { it.textTrim }
         if (exists) return owner()
-        return Constant.UNKNOWN
+        return Constant.C_UNKNOWN
     }
 
     fun Element.takeLockScope(defScope: String = DAVCommonLockLabels.exclusive): String {
         fun takeScope(ele: Element): String {
-            val names = ele.collectChildren(DAVCommonLockLabels.shared, DAVCommonLockLabels.shared).map { it.name }
+            val names = ele.collectChildren(
+                DAVCommonLockLabels.shared, DAVCommonLockLabels.exclusive
+            ).map { it.name }
             if (DAVCommonLockLabels.shared in names) return DAVCommonLockLabels.shared
             if (DAVCommonLockLabels.exclusive in names) return DAVCommonLockLabels.exclusive
             return defScope

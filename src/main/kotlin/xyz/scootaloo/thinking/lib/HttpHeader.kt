@@ -17,5 +17,6 @@ interface HttpHeaderHelper {
 
     fun parseIfHeader(text: String): Pair<Boolean, JsonObject> = HttpHeader.parseIfAsJson(text)
     fun parseETagHeader(text: String): Pair<Boolean, JsonObject> = HttpHeader.parseETagAsJson(text)
+    fun parseTimeoutHeader(text: String): Pair<Boolean, Int> = HttpHeader.parseTimeout(text)
 
 }

@@ -8,6 +8,10 @@ import xyz.scootaloo.thinking.lang.Type
  * @since 2022/4/28 22:21
  */
 
+object CommonHeader {
+    const val timeout = "Timeout"
+}
+
 object IfJsonStruct {
     @Type(JsonArray::class, String::class)
     const val tagged = "tagged"

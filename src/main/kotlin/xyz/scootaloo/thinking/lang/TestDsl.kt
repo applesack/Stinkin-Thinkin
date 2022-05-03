@@ -1,5 +1,8 @@
 package xyz.scootaloo.thinking.lang
 
+import xyz.scootaloo.thinking.util.Rearview
+import java.util.*
+
 /**
  * @author flutterdash@qq.com
  * @since 2022/4/30 22:03
@@ -8,12 +11,19 @@ package xyz.scootaloo.thinking.lang
 interface TestDsl {
 
     infix fun <T> T?.shouldBe(expect: T?) {
-        if (this != expect)
-            throw ResultMistakeException(this, expect)
+        if (this != expect) {
+            throw ResultMistakeException(Rearview.formatCaller(5), this, expect)
+        }
     }
 
     fun <T> T?.log() {
-        println(this)
+        if (this == null) {
+            println("null")
+        } else if (this is Array<*>) {
+            println(Arrays.toString(this))
+        } else {
+            println(this)
+        }
     }
 
     infix fun <T> T.check(block: (T) -> Unit) {
@@ -23,6 +33,6 @@ interface TestDsl {
 
 }
 
-class ResultMistakeException(actual: Any?, expect: Any?) : RuntimeException(
-    "`$actual` returns, bus `$expect` expected"
+class ResultMistakeException(caller: String, actual: Any?, expect: Any?) : RuntimeException(
+    "`$actual` returns, but `$expect` expected\n at $caller"
 )

@@ -1,4 +1,4 @@
-package xyz.scootaloo.thinking.struct.dav
+package xyz.scootaloo.thinking.server.dav
 
 import io.vertx.core.json.JsonObject
 
