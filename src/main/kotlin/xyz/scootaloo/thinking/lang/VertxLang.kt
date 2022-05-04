@@ -17,6 +17,16 @@ infix fun <T> Promise<T>.complete(value: T?) {
     this.complete(value)
 }
 
+inline fun <T, R> Future<T>.trans(crossinline lazy: (T) -> R): Future<R> {
+    return this.transform { done ->
+        if (done.succeeded()) {
+            Future.succeededFuture(lazy(done.result()))
+        } else {
+            Future.failedFuture(done.cause())
+        }
+    }
+}
+
 @JvmName("normalBlocking")
 fun VertxService.blocking(block: CommandBlock): Future<Unit> {
     return blocking<Unit>(block)
