@@ -144,7 +144,7 @@ interface CacheService : VertxService {
                 return
             }
 
-            val realExpiryTime = placeExpiryKeyWithoutRepetition(key, expiryTime)
+            val realExpiryTime = placeExpiryKeyWithoutRepetition(key, (currentTimeMillis() + expiryTime))
             kvMap[key] = CacheItem(value, realExpiryTime)
         }
 
@@ -186,14 +186,14 @@ interface CacheService : VertxService {
             var validExpiryTimeFut = expiryTime + 1
 
             while (true) {
-                if (expiryTime !in expiryMap) {
+                if (validExpiryTimePst !in expiryMap) {
                     expiryMap[validExpiryTimePst] = key
                     return validExpiryTimePst
                 } else {
                     validExpiryTimePst--
                 }
 
-                if (expiryTime !in expiryMap) {
+                if (validExpiryTimeFut !in expiryMap) {
                     expiryMap[validExpiryTimeFut] = key
                     return validExpiryTimeFut
                 } else {

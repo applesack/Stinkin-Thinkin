@@ -8,13 +8,15 @@ import io.vertx.core.eventbus.EventBus
 import io.vertx.core.file.FileSystem
 import io.vertx.kotlin.core.vertxOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import kotlinx.coroutines.launch
+import xyz.scootaloo.thinking.server.component.CrontabService
 import java.util.concurrent.ConcurrentHashMap
 
 /**
  * vertx开发最佳实践
  *
  * 首先, 有一组服务[VertxService], 每个服务都提供一组功能, 服务可以是单例也可以是多例的,
- * 为了统一这种差异, 每个服务都需要提供一个工厂方法,
+ * 为了统一这种差异, 每个服务都需要提供一个工厂方法[Factory],
  * 由工厂方法的实现来决定服务的实例是单例还是多例[VertxService.SingletonFactory];
  *
  * 然后, 每个服务通常需要运行在特定的上下文中[VertxEventbusConsumerService.context],
@@ -56,8 +58,8 @@ interface VertxService {
 
     fun crontab(): VertxCrontab? = null
 
-    abstract class SingletonFactory<T : VertxService>(private val instance: T) : Factory<T> {
-        override fun invoke(type: String): T {
+    abstract class SingletonFactory<T : VertxService>(private val instance: T) : Factory<String, T> {
+        override fun invoke(input: String): T {
             return instance
         }
 
@@ -65,27 +67,26 @@ interface VertxService {
             return instance
         }
 
-        fun factory(): Factory<VertxService> = Factory { instance }
+        fun factory(): Factory<String, VertxService> = Factory { instance }
     }
 
-    abstract class MultiInstanceFactory<T : VertxService>(private val gen: (String) -> T) : Factory<T> {
+    abstract class MultiInstanceFactory<T : VertxService>(
+        private val lazy: (String) -> T,
+    ) : Factory<String, T> {
         private val instanceMapper = ConcurrentHashMap<String, T>()
-        override operator fun invoke(type: String): T {
-            var instance = instanceMapper[type]
-            if (instance != null)
-                return instance
-            return synchronized(this) {
-                instance = instanceMapper[type]
+        override operator fun invoke(input: String): T {
+            return instanceMapper[input] ?: synchronized(this) {
+                val instance = instanceMapper[input]
                 if (instance != null)
-                    return instance!!
+                    return instance
 
-                val newInstance = gen(type)
-                instanceMapper[type] = newInstance
+                val newInstance = lazy(input)
+                instanceMapper[input] = newInstance
                 newInstance
             }
         }
 
-        fun factory(): Factory<VertxService> = Factory(::invoke)
+        fun factory(): Factory<String, VertxService> = Factory(::invoke)
     }
 
 }
@@ -118,14 +119,24 @@ abstract class VertxServiceRegisterCenter : CoroutineVerticle() {
         return deploymentID
     }
 
-    protected fun initServices(details: VertxServerDetailedList) {
+    protected fun startCoroutine(block: CoroutineBlock) = launch { block() }
+
+    protected fun initServices(details: VertxServerDetailedList): List<VertxService> {
         val serviceFactories = details.listServices()
         val instances = serviceFactories.map { it(contextName) }
         instances.forEach { it.vertx = vertx }
         instances.filterIsInstance(VertxEventbusConsumerService::class.java)
             .filter { it.context like this.contextName }
-            .forEach { it.registerEventbusConsumer() }
+            .forEach {
+                it.crontab().ifNotNull(::registerCrontab)
+                it.registerEventbusConsumer()
+            }
         instances.forEach { it.start() }
+        return instances
+    }
+
+    private fun registerCrontab(crontab: VertxCrontab) {
+        CrontabService(contextName).submit(crontab)
     }
 
 }
@@ -143,7 +154,7 @@ abstract class VertxServerDetailedList {
 
     abstract fun listVerticles(): List<VertxServiceRegisterCenter>
 
-    abstract fun listServices(): List<Factory<VertxService>>
+    abstract fun listServices(): List<Factory<String, VertxService>>
 
     fun isServerRunning(): Boolean = running
 

@@ -1,10 +1,8 @@
-package xyz.scootaloo.thinking.server.dav
+package xyz.scootaloo.thinking.server.dav.util
 
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
-import xyz.scootaloo.thinking.lang.headers
 import xyz.scootaloo.thinking.lang.ifNotNull
-import xyz.scootaloo.thinking.lang.Constant
 import java.util.*
 
 /**

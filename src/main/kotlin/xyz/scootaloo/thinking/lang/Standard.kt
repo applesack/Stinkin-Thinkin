@@ -13,7 +13,15 @@ fun currentTimeMillis(): Long {
 }
 
 fun VertxService.getLogger(name: String): Logger {
-    return LoggerFactory.getLogger(name)
+    return LoggerFactory.getLogger("ser:$name")
+}
+
+fun VertxServiceRegisterCenter.getLogger(name: String): Logger {
+    return LoggerFactory.getLogger("vert:$name")
+}
+
+fun VertxHttpApplication.getLogger(name: String): Logger {
+    return LoggerFactory.getLogger("http:$name")
 }
 
 inline fun <T : Any> T?.ifNotNull(block: (T) -> Unit) {
@@ -52,8 +60,8 @@ interface Nameable {
     val name: String
 }
 
-fun interface Factory<T> {
-    operator fun invoke(type: String): T
+fun interface Factory<In, Out> {
+    operator fun invoke(input: In): Out
 }
 
 class ValueHolder<T>(private val value: T?) {

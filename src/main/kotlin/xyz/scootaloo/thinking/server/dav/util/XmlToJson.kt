@@ -1,4 +1,4 @@
-package xyz.scootaloo.thinking.server.dav
+package xyz.scootaloo.thinking.server.dav.util
 
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject

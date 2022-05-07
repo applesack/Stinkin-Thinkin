@@ -1,4 +1,4 @@
-package xyz.scootaloo.thinking.server.dav
+package xyz.scootaloo.thinking.server.dav.util
 
 /**
  * @author flutterdash@qq.com

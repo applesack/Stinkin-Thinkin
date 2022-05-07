@@ -15,6 +15,8 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib"))
 
+    implementation("cn.hutool:hutool-all:5.7.18")
+
     val vertxVersion = "4.2.7"
     implementation("io.vertx:vertx-core:$vertxVersion")
     implementation("io.vertx:vertx-config:$vertxVersion")

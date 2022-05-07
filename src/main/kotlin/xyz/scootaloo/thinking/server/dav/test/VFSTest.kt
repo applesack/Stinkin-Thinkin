@@ -1,6 +1,6 @@
-package xyz.scootaloo.thinking.server.dav.samples
+package xyz.scootaloo.thinking.server.dav.test
 
-import xyz.scootaloo.thinking.server.dav.VirtualFileSystem
+import xyz.scootaloo.thinking.server.dav.util.VirtualFileSystem
 
 /**
  * @author flutterdash@qq.com

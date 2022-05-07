@@ -9,8 +9,14 @@ import java.util.*
  */
 interface CrontabService : VertxService {
 
+    /**
+     * 提交定时任务
+     */
     fun submit(crontab: VertxCrontab)
 
+    /**
+     * 每个上下文中都可以有一份实例
+     */
     companion object : VertxService.MultiInstanceFactory<CrontabService>({ Impl(it) })
 
     // ------------------------------ Implements ---------------------------------
@@ -25,7 +31,9 @@ interface CrontabService : VertxService {
         }
 
         override fun start() {
-            vertx.setPeriodic(interval) { manager.runTaskQue() }
+            if (manager.isNotEmpty()) {
+                vertx.setPeriodic(interval) { manager.runTaskQue() }
+            }
         }
     }
 
@@ -36,6 +44,8 @@ interface CrontabService : VertxService {
             val wrapper = createCrontabWrapper(crontab)
             taskQue[wrapper.id] = wrapper
         }
+
+        fun isNotEmpty() = taskQue.isNotEmpty()
 
         fun runTaskQue() {
             val currentTimeMillis = currentTimeMillis()
@@ -66,7 +76,7 @@ interface CrontabService : VertxService {
         private fun safeExecuteCrontab(currentTimeMillis: Long, crontab: VertxCrontab) = try {
             crontab.run(currentTimeMillis)
         } catch (error: Throwable) {
-            service.log.error("crontab execute error", error)
+            service.log.error("crontab execute error, id: ${crontab.id}", error)
         }
 
         private fun createCrontabWrapper(crontab: VertxCrontab): CrontabWrapper {

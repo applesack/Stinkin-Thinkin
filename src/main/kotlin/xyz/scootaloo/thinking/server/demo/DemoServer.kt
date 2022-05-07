@@ -1,4 +1,4 @@
-package xyz.scootaloo.thinking.server.dav
+package xyz.scootaloo.thinking.server.demo
 
 import io.vertx.core.VertxOptions
 import io.vertx.kotlin.core.vertxOptionsOf
@@ -8,23 +8,20 @@ import xyz.scootaloo.thinking.lang.VertxService
 import xyz.scootaloo.thinking.lang.VertxServiceRegisterCenter
 import xyz.scootaloo.thinking.server.component.CacheService
 import xyz.scootaloo.thinking.server.component.CrontabService
-import xyz.scootaloo.thinking.server.dav.application.WebDAVHttpVerticle
 
 /**
  * @author flutterdash@qq.com
- * @since 2022/5/4 22:57
+ * @since 2022/5/6 18:07
  */
-object WebDAVServer : VertxServer() {
-
+object DemoServer : VertxServer() {
     override fun serverVertxOption(): VertxOptions {
-        return vertxOptionsOf(
-            eventLoopPoolSize = 4,
-            workerPoolSize = 15
-        )
+        return vertxOptionsOf(eventLoopPoolSize = 4, workerPoolSize = 4)
     }
 
     override fun listVerticles(): List<VertxServiceRegisterCenter> {
-        return listOf(WebDAVHttpVerticle)
+        return listOf(
+            DemoHttpVerticle, DemoStateVerticle
+        )
     }
 
     override fun listServices(): List<Factory<String, VertxService>> {
@@ -33,5 +30,4 @@ object WebDAVServer : VertxServer() {
             CacheService.factory()
         )
     }
-
 }

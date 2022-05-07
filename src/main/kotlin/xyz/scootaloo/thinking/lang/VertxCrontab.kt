@@ -9,7 +9,7 @@ interface VertxCrontab {
     /**
      * 可以在[run]方法中修改这个属性, 当这个属性为false时, 当前任务会从定时任务队列中删除(将不会再定期执行)
      */
-    val valid: Boolean
+    var valid: Boolean
 
     /**
      * 任务标记, 这个名称必须是唯一的(在一个同一个上下文中唯一即可)
@@ -19,7 +19,7 @@ interface VertxCrontab {
     /**
      * 执行任务的间隔(单位毫秒), 可以在[run]方法中动态调整
      */
-    val delay: Long
+    var delay: Long
 
     /**
      * 运行时的优先级, 数字越小优先级越高, 只能取1~9, 默认5
@@ -34,7 +34,7 @@ interface VertxCrontab {
 }
 
 abstract class VertxCrontabAdapter : VertxCrontab {
-    override val valid: Boolean = true
-    override val delay: Long = 100L
+    override var valid: Boolean = true
+    override var delay: Long = 100L
     override val order: Int = 5
 }

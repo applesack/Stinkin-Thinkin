@@ -1,4 +1,4 @@
-package xyz.scootaloo.thinking.sample
+package xyz.scootaloo.thinking.samples
 
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
