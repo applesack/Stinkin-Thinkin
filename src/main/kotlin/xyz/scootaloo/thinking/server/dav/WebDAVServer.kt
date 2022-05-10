@@ -8,7 +8,11 @@ import xyz.scootaloo.thinking.lang.VertxService
 import xyz.scootaloo.thinking.lang.VertxServiceRegisterCenter
 import xyz.scootaloo.thinking.server.component.CacheService
 import xyz.scootaloo.thinking.server.component.CrontabService
+import xyz.scootaloo.thinking.server.dav.application.WebDAVFileVerticle
 import xyz.scootaloo.thinking.server.dav.application.WebDAVHttpVerticle
+import xyz.scootaloo.thinking.server.dav.application.WebDAVStateVerticle
+import xyz.scootaloo.thinking.server.dav.service.AccountService
+import xyz.scootaloo.thinking.server.dav.service.DAVPropFindService
 
 /**
  * @author flutterdash@qq.com
@@ -19,18 +23,20 @@ object WebDAVServer : VertxServer() {
     override fun serverVertxOption(): VertxOptions {
         return vertxOptionsOf(
             eventLoopPoolSize = 4,
-            workerPoolSize = 15
+            workerPoolSize = 12
         )
     }
 
     override fun listVerticles(): List<VertxServiceRegisterCenter> {
-        return listOf(WebDAVHttpVerticle)
+        return listOf(WebDAVHttpVerticle, WebDAVStateVerticle, WebDAVFileVerticle)
     }
 
     override fun listServices(): List<Factory<String, VertxService>> {
         return listOf(
             CrontabService.factory(),
-            CacheService.factory()
+            CacheService.factory(),
+            AccountService.factory(),
+            DAVPropFindService.factory()
         )
     }
 

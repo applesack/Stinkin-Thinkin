@@ -76,6 +76,5 @@ public class JP31 {
         int[] input = {1, 3, 2};
         nextPermutation(input);
         System.out.println(Arrays.toString(input));
-        ;
     }
 }

@@ -1,0 +1,4 @@
+# rfc
+
+# ms webdav
+https://docs.microsoft.com/en-us/previous-versions/office/developer/exchange-server-2003/aa486282(v=exchg.65)

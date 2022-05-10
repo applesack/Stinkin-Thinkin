@@ -10,7 +10,7 @@ import xyz.scootaloo.thinking.lang.getLogger
  * @since 2022/5/6 18:09
  */
 object DemoHttpVerticle : VertxServiceRegisterCenter() {
-    private val log by lazy { getLogger("http") }
+    override val log by lazy { getLogger("http") }
 
     override val contextName = DemoContext.httpServer
 

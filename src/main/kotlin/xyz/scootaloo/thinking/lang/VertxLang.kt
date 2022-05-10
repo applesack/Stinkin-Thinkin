@@ -39,12 +39,8 @@ fun <T> VertxService.blocking(block: CodeBlock<T>): Future<T> {
     }
 }
 
-suspend fun VertxService.waitBlocking(block: CommandBlock) {
-    vertx.executeBlocking<Unit> {
-        it complete block()
+suspend fun <T> VertxService.waitBlocking(block: CodeBlock<T>): T {
+    return vertx.executeBlocking<T> {
+        it.complete(block())
     }.await()
-}
-
-suspend fun <T> VertxService.waitBlocking(block: PromiseBlock<T>): T {
-    return vertx.executeBlocking(block).await()
 }

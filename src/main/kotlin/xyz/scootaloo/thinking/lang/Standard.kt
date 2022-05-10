@@ -13,7 +13,7 @@ fun currentTimeMillis(): Long {
 }
 
 fun VertxService.getLogger(name: String): Logger {
-    return LoggerFactory.getLogger("ser:$name")
+    return LoggerFactory.getLogger("service:$name")
 }
 
 fun VertxServiceRegisterCenter.getLogger(name: String): Logger {
@@ -73,5 +73,15 @@ class ValueHolder<T>(private val value: T?) {
         fun <T> empty(): ValueHolder<T> {
             return ValueHolder(null)
         }
+    }
+}
+
+class VariableHolder<T>(private var value: T? = null) {
+    fun set(value: T) {
+        this.value = value
+    }
+
+    operator fun invoke(): T {
+        return value!!
     }
 }

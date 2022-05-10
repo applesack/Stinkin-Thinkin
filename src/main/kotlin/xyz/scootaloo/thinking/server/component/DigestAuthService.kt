@@ -41,6 +41,7 @@ interface DigestAuthService : VertxService, Authenticator {
 
     private object Impl : SingletonVertxService(), DigestAuthService {
         override val log by lazy { getLogger("auth:digest") }
+        override val context = ContextRegedit.httpServer
         private lateinit var provider: UserProvider
 
         override fun setProvider(provider: UserProvider) {
@@ -244,7 +245,7 @@ interface DigestAuthService : VertxService, Authenticator {
         const val C_STALE = "stale"
     }
 
-    class AuthorizationHeader(
+    private class AuthorizationHeader(
         val username: String,
         val realm: String,
         val method: String,

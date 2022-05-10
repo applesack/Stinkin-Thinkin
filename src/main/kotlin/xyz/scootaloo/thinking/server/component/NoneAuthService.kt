@@ -2,6 +2,7 @@ package xyz.scootaloo.thinking.server.component
 
 import io.vertx.ext.web.RoutingContext
 import xyz.scootaloo.thinking.lang.Authenticator
+import xyz.scootaloo.thinking.lang.ContextRegedit
 import xyz.scootaloo.thinking.lang.SingletonVertxService
 import xyz.scootaloo.thinking.lang.getLogger
 
@@ -11,6 +12,7 @@ import xyz.scootaloo.thinking.lang.getLogger
  */
 object NoneAuthService : SingletonVertxService(), Authenticator {
     override val log by lazy { getLogger("auth:none") }
+    override val context = ContextRegedit.httpServer
     override suspend fun handle(ctx: RoutingContext) {
         ctx.next()
     }

@@ -1,5 +1,6 @@
 package xyz.scootaloo.thinking.server.dav.application
 
+import io.vertx.core.http.HttpServer
 import io.vertx.ext.web.Router
 import io.vertx.kotlin.coroutines.await
 import xyz.scootaloo.thinking.lang.VertxServiceRegisterCenter
@@ -11,22 +12,30 @@ import xyz.scootaloo.thinking.lang.getLogger
  */
 object WebDAVHttpVerticle : VertxServiceRegisterCenter() {
     override val contextName: String = WebDAVContext.httpServer
-    private val log by lazy { getLogger("http") }
+    override val log by lazy { getLogger("http") }
 
     override suspend fun start() {
+        val port = 2019
+
         val router = Router.router(vertx)
         router.get("/").handler {
             it.end("ok")
         }
 
-        log.info("hello")
         vertx.createHttpServer()
             .requestHandler(router)
-            .listen(8080).await()
-        log.info("服务启动成功")
+            .listen(port).await()
+        log.info("server started; listen port[$port]")
+    }
+
+    private suspend fun createHttpServer(port: Int): HttpServer? = try {
+        vertx.createHttpServer()
+    } catch (e: Throwable) {
+        null
     }
 
     private fun configHttpRouter() {
 
     }
+
 }

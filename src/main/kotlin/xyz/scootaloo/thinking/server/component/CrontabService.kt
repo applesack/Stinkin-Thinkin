@@ -33,19 +33,21 @@ interface CrontabService : VertxService {
         override fun start() {
             if (manager.isNotEmpty()) {
                 vertx.setPeriodic(interval) { manager.runTaskQue() }
+                log.info("in context $context; crontab service running now," +
+                        " that are ${manager.size} task registered;")
             }
         }
     }
 
-    private class CrontabManager(private val service: Impl) {
-        private val taskQue = TreeMap<String, CrontabWrapper>()
+    private class CrontabManager(
+        private val service: Impl,
+        private val taskQue: TreeMap<String, CrontabWrapper> = TreeMap(),
+    ) : Map<String, Any> by taskQue {
 
         fun submit(crontab: VertxCrontab) {
             val wrapper = createCrontabWrapper(crontab)
             taskQue[wrapper.id] = wrapper
         }
-
-        fun isNotEmpty() = taskQue.isNotEmpty()
 
         fun runTaskQue() {
             val currentTimeMillis = currentTimeMillis()

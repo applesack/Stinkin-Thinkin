@@ -14,8 +14,6 @@ import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 
 typealias GenericMessageFormat = JsonObject
 
-val Message<*>.headers: MultiMap get() = headers()
-
 fun EventBus.callService(address: String, data: GenericMessageFormat): Future<Message<JsonObject>> {
     return request(address, data, deliveryOptionsOf(localOnly = true))
 }

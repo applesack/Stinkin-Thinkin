@@ -5,12 +5,17 @@ import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.VertxOptions
 import io.vertx.core.eventbus.EventBus
+import io.vertx.core.eventbus.Message
 import io.vertx.core.file.FileSystem
 import io.vertx.kotlin.core.vertxOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import org.slf4j.Logger
 import xyz.scootaloo.thinking.server.component.CrontabService
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.system.exitProcess
 
 /**
  * vertx开发最佳实践
@@ -49,6 +54,8 @@ interface VertxService {
     val eb: EventBus get() = vertx.eventBus()
 
     val fs: FileSystem get() = vertx.fileSystem()
+
+    var entrance: CoroutineEntrance
 
     val order: Int
 
@@ -97,7 +104,7 @@ interface VertxEventbusConsumerService : VertxService {
 
     val context: String
 
-    fun registerEventbusConsumer()
+    fun registerEventbusConsumer(contextName: String)
 
 }
 
@@ -105,14 +112,24 @@ abstract class SingletonVertxService : VertxEventbusConsumerService {
 
     override lateinit var vertx: Vertx
 
-    override lateinit var context: String
+    override lateinit var entrance: CoroutineEntrance
 
-    override fun registerEventbusConsumer() {}
+    override fun registerEventbusConsumer(contextName: String) {}
+
+    fun <T> EventBus.coroutineConsumer(
+        address: String, handler: suspend CoroutineScope.(Message<T>) -> Unit,
+    ) {
+        consumer<T>(address) { message ->
+            entrance {
+                handler(message)
+            }
+        }
+    }
 
 }
 
 abstract class VertxServiceRegisterCenter : CoroutineVerticle() {
-
+    abstract val log: Logger
     abstract val contextName: String
 
     fun deploymentId(): String {
@@ -121,18 +138,35 @@ abstract class VertxServiceRegisterCenter : CoroutineVerticle() {
 
     protected fun startCoroutine(block: CoroutineBlock) = launch { block() }
 
+    protected fun closeServer() {
+        vertx.close().onComplete {
+            exitProcess(0)
+        }
+    }
+
     protected fun initServices(details: VertxServerDetailedList): List<VertxService> {
         val serviceFactories = details.listServices()
         val instances = serviceFactories.map { it(contextName) }
         instances.forEach { it.vertx = vertx }
         instances.filterIsInstance(VertxEventbusConsumerService::class.java)
             .filter { it.context like this.contextName }
-            .forEach {
-                it.crontab().ifNotNull(::registerCrontab)
-                it.registerEventbusConsumer()
-            }
-        instances.forEach { it.start() }
+            .forEach(::configComponent)
+
+        startCrontab()
         return instances
+    }
+
+    private fun configComponent(service: VertxEventbusConsumerService) = try {
+        service.entrance = this::startCoroutine
+        service.crontab().ifNotNull(::registerCrontab)
+        service.registerEventbusConsumer(contextName)
+        service.start()
+    } catch (error: Throwable) {
+        log.error("an error when register service; current context: $contextName", error)
+    }
+
+    private fun startCrontab() {
+        CrontabService(contextName).start()
     }
 
     private fun registerCrontab(crontab: VertxCrontab) {

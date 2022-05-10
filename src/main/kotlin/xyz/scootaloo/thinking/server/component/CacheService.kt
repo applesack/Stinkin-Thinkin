@@ -29,6 +29,8 @@ interface CacheService : VertxService {
 
     fun updateKeyExpiry(key: String, newExpiryTime: Long = defTime): Future<Unit>
 
+    fun internal(): InternalApi
+
     interface InternalApi {
         fun <T> get(key: String): T?
 
@@ -61,7 +63,7 @@ interface CacheService : VertxService {
     }
 
     private object Impl : SingletonVertxService(), CacheService {
-        val log by lazy { getLogger("cache-service") }
+        val log by lazy { getLogger("cache") }
 
         override var context: String = ContextRegedit.state
 
@@ -90,7 +92,11 @@ interface CacheService : VertxService {
             return eb.request<Unit>(InternalProtocol.upd, requestBody).trans { }
         }
 
-        override fun registerEventbusConsumer() {
+        override fun internal(): InternalApi {
+            return CacheManager
+        }
+
+        override fun registerEventbusConsumer(contextName: String) {
             eb.consumer<String>(InternalProtocol.get) { request ->
                 val key = request.body()
                 val value = CacheManager.get<String>(key)
@@ -118,6 +124,8 @@ interface CacheService : VertxService {
                 )
                 request.reply(null)
             }
+
+            log.info("eventbus cache service ready; current context: $contextName")
         }
 
         override fun crontab() = AutoGCCacheCrontab

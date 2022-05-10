@@ -15,32 +15,7 @@ import java.util.*
  *
  * 附加特性:
  *
- * - LRU缓存, 动态保存500个最常用文件的信息, 包括从数据库中整合来的数据
- * - 动态刷新锁的超时
- *
- * ---
- *
- * 支持 WebDAV 的几种操作
- *
- * - Lock: 加锁, 如果目标文件存在, 则在目标文件所在的文件夹上附加一个锁信息(可以定时删除);
- *     - 输入: 目标文件所在的路径, 锁类型, 超时时间
- *     - 输入: 处理结果(如果处理成功, 则返回该锁的唯一ID, 字符串类型)
- *
- * - Unlock: 解锁, 如果用户是该锁的拥有者, 则解锁成功
- *     - 输入: 目标文件所在的路径
- *     - 输出: 处理结果
- *
- * - PropFind: 属性发现, 根据深度信息, 返回一定范围内的所有文件描述
- *     - 输入: 文件路径, 范围(深度, 可选0,1和无限)
- *     - 输入: 范围内的文件描述
- *
- * - PropPatch: 属性修改, 允许更新,设置或者删除一个属性
- *     - 输入: 文件路径
- *     - 输出: 处理结果()
- *
- * - MKCOL: 创建集合, 创建文件或者文件夹
- *
- * - PUT: 将资源上传到指定路径(替代已经存在的文件)
+ * - LRU缓存, 动态维持一定数量的最常用文件的信息, 包括从数据库中整合来的数据
  *
  * @author flutterdash@qq.com
  * @since 2022/4/21 17:03
@@ -49,7 +24,6 @@ object VirtualFileSystem {
 
     val struct = Struct()
     val viewer = Viewer()
-    val options = Options()
 
     private const val SEPARATOR = '/'
     private val root = SentryNode(SEPARATOR.toString())
@@ -78,6 +52,10 @@ object VirtualFileSystem {
         NODE, END, MISSING
     }
 
+    /**
+     * 会修改文件系统结构的一些操作;
+     * 如创建/删除文件/文件夹, 移动/复制等
+     */
     class Struct private constructor() {
         fun createDirectory(directoryPath: String) {
             val pathItems = Helper.pathSplit(directoryPath, SEPARATOR)
@@ -116,51 +94,22 @@ object VirtualFileSystem {
         }
     }
 
-    class Options private constructor() {
-        suspend fun lock(message: Message<JsonObject>) {
-//           val (hitNode, state, filename) = search(message.headers[Constant.EB_H_PATH])
-//            if (state == SearchStatus.END) {
-//                LockManager.lock(hitNode, filename, message)
-//            } else {
-//                // 客户端尝试锁定不存在的资源, 响应204状态码; 9.10.4
-////                message { replyWithHttp204() }
-//            }
-        }
-
-        fun unlock(message: Message<JsonObject>) {
-            message.reply("")
-        }
-
-        companion object {
-            operator fun invoke(): Options {
-                return Options()
-            }
-        }
-    }
-
+    /**
+     * 不会修改文件系统结构的操作;
+     * 如查看文件的属性, 给文件加锁/解锁, 设置/移除属性等
+     */
     class Viewer private constructor() {
-        fun propFind(path: String) {
+
+        private val supportProperties = listOf(
+            "author", "creationDate", "displayName", "resourceType", "supportLock"
+        )
+
+        fun supportProps() {
+
         }
 
-        fun propPatch(path: String) {
-        }
+        suspend fun findFile() {
 
-        fun lock(path: String) {
-        }
-
-        fun unlock(path: String) {
-        }
-
-        fun copy() {
-        }
-
-        fun move() {
-        }
-
-        fun delete() {
-        }
-
-        fun makeCol() {
         }
 
         companion object {

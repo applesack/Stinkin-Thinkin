@@ -27,6 +27,12 @@ dependencies {
     // xml
     implementation("org.dom4j:dom4j:2.1.3")
 
+    // sqlite
+    implementation("org.xerial:sqlite-jdbc:3.36.0.3")
+    val ktormVersion = "3.4.1"
+    implementation("org.ktorm:ktorm-core:${ktormVersion}")
+    implementation("org.ktorm:ktorm-support-sqlite:${ktormVersion}")
+
     // logger
     // 高版本log4j不显示彩色日志, 需要在虚拟机选项中设置 -Dlog4j.skipJansi=false
     val log4jVersion = "2.17.2"

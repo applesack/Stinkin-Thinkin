@@ -10,6 +10,7 @@ import xyz.scootaloo.thinking.lang.Type
 
 object CommonHeader {
     const val timeout = "Timeout"
+    const val depth = "Depth"
 }
 
 object IfJsonStruct {
@@ -31,10 +32,7 @@ object IfJsonStruct {
 class IfExpression(
     var tagged: String? = null,
     val list: MutableList<List<ConditionItem>> = ArrayList()
-) {
-    fun evaluate() {
-    }
-}
+)
 
 object ConditionJsonStruct {
     const val not = "not"
