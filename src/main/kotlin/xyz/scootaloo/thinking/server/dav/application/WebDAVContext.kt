@@ -2,7 +2,6 @@ package xyz.scootaloo.thinking.server.dav.application
 
 import org.ktorm.database.Database
 import xyz.scootaloo.thinking.lang.ContextRegedit
-import xyz.scootaloo.thinking.lang.VariableHolder
 
 /**
  * @author flutterdash@qq.com

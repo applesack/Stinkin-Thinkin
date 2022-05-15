@@ -44,18 +44,15 @@ object VirtualFileSystem : VertxUtils {
             return false to emptyList()
         }
 
-        if (!Viewer.hasDirectory(path)) {
+        if (!Viewer.hasFile(path)) {
             return false to emptyList()
         }
 
         val result = LinkedList<AFile>()
-        val current = FileCache.handle(Helper.solveFile(fullPath, fs))
-        current ?: return false to emptyList()
-        current.ifNotNull {
-            result.add(it)
-        }
+        val current = FileCache.handle(Helper.solveFile(fullPath, fs)) ?: return false to emptyList()
+        result.add(current)
 
-        if (depth == 1) {
+        if (depth == 1 && Viewer.hasDirectory(current.href)) {
             val children = fs.readDir(fullPath).await()
             for (childFullPath in children) {
                 FileCache.handle(Helper.solveFile(childFullPath, fs)).ifNotNull {

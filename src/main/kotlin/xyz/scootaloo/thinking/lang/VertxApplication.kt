@@ -123,16 +123,6 @@ abstract class VertxHttpApplication(private val entrance: CoroutineEntrance) {
     }
 }
 
-interface HttpApplicationHelper {
-
-    fun RoutingContext.replyWithXml(xml: String) {
-        val response = response()
-        response.putHeader(HttpHeaders.CONTENT_TYPE, "application/xml; charset=\"utf-8\"")
-        end(xml)
-    }
-
-}
-
 class VertxHttpAppAssemblyFactory(
     val vertx: Vertx,
     private val provider: UserProvider,

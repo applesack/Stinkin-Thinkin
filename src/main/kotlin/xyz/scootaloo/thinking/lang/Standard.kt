@@ -80,12 +80,9 @@ class ValueHolder<T>(private val value: T?) {
     }
 }
 
-class VariableHolder<T>(private var value: T? = null) {
-    fun set(value: T) {
-        this.value = value
-    }
+abstract class StateHolder<S, T> {
 
-    operator fun invoke(): T {
-        return value!!
-    }
+    abstract var state: S
+    abstract var data: T?
+
 }

@@ -34,7 +34,8 @@ object FileServiceImpl : SingletonVertxService(), FileService {
         log.info("path [$mounted] has been mounted, dir $dirCount, file $fileCount")
     }
 
-    override suspend fun viewFiles(path: String, depth: Int): List<AFile> {
-        TODO("Not yet implemented")
+    override suspend fun viewFiles(path: String, depth: Int): Pair<Boolean, List<AFile>> {
+        return VirtualFileSystem.viewFiles(path, depth, fs)
     }
+
 }

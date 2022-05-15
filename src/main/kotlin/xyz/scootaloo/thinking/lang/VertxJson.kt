@@ -11,6 +11,10 @@ import io.vertx.core.json.JsonObject
 val INVALID_JSON = JsonObject()
 val INVALID_JSON_ARRAY = JsonArray()
 
-operator fun JsonObject.set(key: String, value: Any) {
+operator fun JsonObject.set(key: String, value: Any?) {
     put(key, value)
+}
+
+operator fun JsonObject.contains(key: String): Boolean {
+    return getValue(key) != null
 }

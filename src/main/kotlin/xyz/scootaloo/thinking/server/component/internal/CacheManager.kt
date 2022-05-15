@@ -9,6 +9,7 @@ import kotlin.collections.HashMap
  * @author flutterdash@qq.com
  * @since 2022/5/13 20:18
  */
+@Context("state")
 object CacheManager : VertxUtils {
     private val log = getLogger("cache")
     private val kvMap = HashMap<String, CacheItem>()
