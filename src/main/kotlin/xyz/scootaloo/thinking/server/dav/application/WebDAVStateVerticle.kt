@@ -25,19 +25,22 @@ object WebDAVStateVerticle : VertxServiceRegisterCenter() {
     private suspend fun prepareDatabase() {
         val fs = vertx.fileSystem()
         val exists = fs.exists(db).await()
+        val database: Database
         if (exists) {
             val props = fs.props(db).await()
             if (props.isDirectory) {
                 log.error("database file '$db' not a file")
                 return closeServer()
+            } else {
+                database = safeCreateDatabaseRef() ?: return closeServer()
             }
         } else {
             fs.mkdirs("./conf").await()
-            fs.createFile(db).await()
-            val database = safeCreateDatabaseRef() ?: return closeServer()
+//            fs.createFile(db).await()
+            database = safeCreateDatabaseRef() ?: return closeServer()
             initDatabaseStruct(fs, database)
-            WebDAVContext.database = database
         }
+        WebDAVContext.database = database
         log.info("database available now")
     }
 
@@ -51,10 +54,16 @@ object WebDAVStateVerticle : VertxServiceRegisterCenter() {
         null
     }
 
-    private suspend fun initDatabaseStruct(fs: FileSystem, database: Database) {
-        val sql = safeLoadInitScript(fs) ?: return closeServer()
-        database.useConnection { conn ->
-            conn.prepareStatement(sql).execute()
+    private suspend fun initDatabaseStruct(fs: FileSystem, database: Database): Any? {
+        return try {
+            val sql = safeLoadInitScript(fs) ?: return closeServer()
+            database.useConnection { conn ->
+                val updated = conn.prepareStatement(sql).executeUpdate()
+                log.info("updated item $updated")
+            }
+        } catch (error: Throwable) {
+            log.error("an error when execute sql init script", error)
+            null
         }
     }
 

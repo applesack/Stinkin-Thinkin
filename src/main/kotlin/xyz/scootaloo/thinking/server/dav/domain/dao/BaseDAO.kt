@@ -1,6 +1,7 @@
 package xyz.scootaloo.thinking.server.dav.domain.dao
 
 import org.ktorm.database.Database
+import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
 
 /**
  * @author flutterdash@qq.com
@@ -8,13 +9,6 @@ import org.ktorm.database.Database
  */
 abstract class BaseDAO {
 
-    lateinit var db: Database
+    val db get() = WebDAVContext.database
 
-    companion object {
-
-
-        fun initRef(ref: Database) {
-
-        }
-    }
 }

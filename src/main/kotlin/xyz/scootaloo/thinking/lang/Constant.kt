@@ -8,5 +8,5 @@ object Constant {
     const val STATUS = "status"
     const val SUBJECT = "subject"
 
-    const val C_UNKNOWN = "unknown"
+    const val UNKNOWN = "unknown"
 }

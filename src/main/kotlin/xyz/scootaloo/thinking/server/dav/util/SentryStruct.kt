@@ -13,7 +13,7 @@ class RuleRecord
 
 class FileMarkChunk(
     val lock: LockRecord,
-    val rule: RuleRecord
+    val etag: List<String>
 )
 
 class SentryNode(
@@ -29,7 +29,7 @@ class SentryNode(
     fun delChild(name: String) = children.del(name)
     fun addChild(member: String) = children.add(SentryNode(member, this))
 
-    fun getRecord(file: String): FileMarkChunk? = records[file]
+    fun getRecord(file: String = ""): FileMarkChunk? = records[file]
 
     fun fullPath(sep: Char): String {
         val pathItems = LinkedList<String>()

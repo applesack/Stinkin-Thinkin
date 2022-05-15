@@ -24,17 +24,34 @@ class NameGroup<T : Nameable> {
         val limit = size
         var l = pivot
         var r = pivot + 1
+        var selected: String
         while (l >= 0 || r < limit) {
             if (l >= 0) {
-                if (doublePointerMatch(group[l].name, name)) {
+                selected = group[l].name
+                if (
+                    selected.hashCode() == name.hashCode() &&
+                    doublePointerMatch(selected, name)
+                ) {
                     findIdx = l
                     return true
                 }
-                l--
+                if (selected.length != name.length) {
+                    l = -1
+                } else {
+                    l--
+                }
             }
 
             if (r < limit) {
-                if (doublePointerMatch(group[r].name, name)) {
+                selected = group[r].name
+                if (selected.length != name.length) {
+                    r = limit
+                    continue
+                }
+                if (
+                    selected.hashCode() == name.hashCode() &&
+                    doublePointerMatch(selected, name)
+                ) {
                     findIdx = r
                     return true
                 }

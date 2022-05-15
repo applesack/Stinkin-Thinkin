@@ -28,6 +28,10 @@ class WebDAVHttpApplication(entrance: CoroutineEntrance) : VertxHttpApplication(
         get {
 
         }
+
+        post {
+
+        }
     }
 
     companion object : InstanceFactory({ WebDAVHttpApplication(it) })

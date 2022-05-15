@@ -47,6 +47,8 @@ import kotlin.system.exitProcess
  * @since 2022/5/2 23:14
  */
 
+interface VertxUtils
+
 interface VertxService {
 
     var vertx: Vertx
@@ -59,7 +61,7 @@ interface VertxService {
 
     val order: Int
 
-    fun start() {}
+    suspend fun start() {}
 
     fun stop() {}
 
@@ -147,6 +149,7 @@ abstract class VertxServiceRegisterCenter : CoroutineVerticle() {
     protected fun initServices(details: VertxServerDetailedList): List<VertxService> {
         val serviceFactories = details.listServices()
         val instances = serviceFactories.map { it(contextName) }
+
         instances.forEach { it.vertx = vertx }
         instances.filterIsInstance(VertxEventbusConsumerService::class.java)
             .filter { it.context like this.contextName }
@@ -156,17 +159,24 @@ abstract class VertxServiceRegisterCenter : CoroutineVerticle() {
         return instances
     }
 
-    private fun configComponent(service: VertxEventbusConsumerService) = try {
+    private fun configComponent(service: VertxEventbusConsumerService): Unit = try {
         service.entrance = this::startCoroutine
         service.crontab().ifNotNull(::registerCrontab)
         service.registerEventbusConsumer(contextName)
-        service.start()
+        if (service !is CrontabService) {
+            startCoroutine {
+                service.start()
+            }
+        }
+        Unit
     } catch (error: Throwable) {
         log.error("an error when register service; current context: $contextName", error)
     }
 
     private fun startCrontab() {
-        CrontabService(contextName).start()
+        startCoroutine {
+            CrontabService(contextName).start()
+        }
     }
 
     private fun registerCrontab(crontab: VertxCrontab) {

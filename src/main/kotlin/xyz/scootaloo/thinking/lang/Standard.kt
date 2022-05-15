@@ -16,6 +16,10 @@ fun VertxService.getLogger(name: String): Logger {
     return LoggerFactory.getLogger("service:$name")
 }
 
+fun VertxUtils.getLogger(name: String): Logger {
+    return LoggerFactory.getLogger("util:$name")
+}
+
 fun VertxServiceRegisterCenter.getLogger(name: String): Logger {
     return LoggerFactory.getLogger("vert:$name")
 }

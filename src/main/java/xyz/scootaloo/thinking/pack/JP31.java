@@ -24,7 +24,7 @@ public class JP31 {
      * 2 1 3
      * 2 3 1 <
      * 3 1 2
-     * 3 2 1 无下一个排列
+     * 3 2 1
      *
      * @param nums ignore
      */
