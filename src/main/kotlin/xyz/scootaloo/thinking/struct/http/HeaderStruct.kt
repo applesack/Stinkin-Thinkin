@@ -8,11 +8,6 @@ import xyz.scootaloo.thinking.lang.Type
  * @since 2022/4/28 22:21
  */
 
-object CommonHeader {
-    const val timeout = "Timeout"
-    const val depth = "Depth"
-}
-
 object IfJsonStruct {
     @Type(JsonArray::class, String::class)
     const val tagged = "tagged"
@@ -69,4 +64,14 @@ object ETagJsonStruct {
 class ETag(
     val weak: Boolean,
     val name: String
+)
+
+object DepthJsonStruct {
+    const val depth = "depth"
+    const val noRoot = "noRoot"
+}
+
+class Depth(
+    val depth: Int,
+    val noRoot: Boolean
 )

@@ -2,6 +2,8 @@ package xyz.scootaloo.thinking.server.dav.util
 
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.Json
+import io.vertx.kotlin.core.json.obj
 import org.dom4j.DocumentHelper
 import org.dom4j.Element
 import org.dom4j.Namespace
@@ -9,13 +11,66 @@ import org.dom4j.QName
 import org.junit.jupiter.api.Test
 import xyz.scootaloo.thinking.lang.TestDsl
 import xyz.scootaloo.thinking.lang.ifNotNull
+import xyz.scootaloo.thinking.lang.set
 import java.util.*
 
 /**
+ * sample1
+ * ```json
+ * {
+ *     "input": "abc"
+ * }
+ * ```
+ * convert, shell="div"
+ * ```xml
+ * <div>
+ *     <input>abc</input>
+ * </div>
+ * ```
+ * ---------------------------------------------
+ * sample2
+ * ```json
+ * {
+ *     "input": {}
+ * }
+ * ```
+ * convert, shell="div"
+ * ```xml
+ * <div>
+ *     <input/>
+ * </div>
+ * ```
+ * ---------------------------------------------
+ * sample3
+ * ```json
+ * {
+ *     "input": {
+ *         "-name": "test",
+ *         "#text": "value"
+ *     }
+ * }
+ * ```
+ * convert, shell="div"
+ * ```xml
+ * <div>
+ *     <input name="test">value</input>
+ * </div>
+ * ```
  * @author flutterdash@qq.com
  * @since 2022/5/8 14:02
  */
 object JsonToXml {
+
+    fun closedTag() = JsonObject()
+
+    fun textTag(text: String, vararg attrs: Pair<String, String>): JsonObject {
+        return Json.obj {
+            this[Symbol.text] = text
+            for (attr in attrs) {
+                this["${Symbol.attr}${attr.first}"] = attr.second
+            }
+        }
+    }
 
     fun convert(json: JsonObject, shell: String, uri: String = "DAV:"): String {
         val document = DocumentHelper.createDocument()
@@ -31,6 +86,15 @@ object JsonToXml {
     }
 
     private fun switch(root: Element, name: String, data: Any, namespace: Namespace) {
+        if (name == Symbol.text) {
+            root.addText(data.toString())
+            return
+        }
+        if (name.startsWith(Symbol.attr)) {
+            root.addAttribute(name.substring(Symbol.attr.length), data.toString())
+            return
+        }
+
         when (data) {
             is JsonObject -> {
                 (data as? JsonObject).ifNotNull {
@@ -53,9 +117,15 @@ object JsonToXml {
     private fun Element.flattening(name: String, namespace: Namespace): Element {
         return addElement(QName(name.lowercase(Locale.getDefault()), namespace))
     }
+
+    private object Symbol {
+        const val text = "#text"
+        const val attr = "-"
+    }
+
 }
 
-class JsonToXmlTest : TestDsl {
+private class JsonToXmlTest : TestDsl {
 
     @Test
     fun test0() {
@@ -71,7 +141,10 @@ class JsonToXmlTest : TestDsl {
                         "author": {
                             "name": "Hadrian"
                         },
-                        "creationDate": "1997-12-01T17:42:21-08:00",
+                        "creationDate": {
+                            "-ns0:dt": "dateTime.rfc1123",
+                            "#text": "1997-12-01T17:42:21-08:00"
+                        },
                         "displayName": "Example collection",
                         "resourceType": {}
                     },

@@ -12,6 +12,7 @@ import xyz.scootaloo.thinking.server.dav.application.WebDAVFileVerticle
 import xyz.scootaloo.thinking.server.dav.application.WebDAVHttpVerticle
 import xyz.scootaloo.thinking.server.dav.application.WebDAVStateVerticle
 import xyz.scootaloo.thinking.server.dav.service.AccountService
+import xyz.scootaloo.thinking.server.dav.service.DAVLockService
 import xyz.scootaloo.thinking.server.dav.service.DAVPropFindService
 import xyz.scootaloo.thinking.server.dav.service.FileService
 
@@ -39,6 +40,7 @@ object WebDAVServer : VertxServer() {
             CacheService.factory(),
             AccountService.factory(),
             DAVPropFindService.factory(),
+            DAVLockService.factory(),
             FileService.factory()
         )
     }

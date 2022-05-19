@@ -138,7 +138,7 @@ abstract class VertxServiceRegisterCenter : CoroutineVerticle() {
         return deploymentID
     }
 
-    protected fun startCoroutine(block: CoroutineBlock) = launch { block() }
+    fun startCoroutine(block: CoroutineBlock) = launch { block() }
 
     protected fun closeServer() {
         vertx.close().onComplete {

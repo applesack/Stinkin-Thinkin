@@ -21,3 +21,6 @@ annotation class Alias(val value: String)
 
 @Retention(AnnotationRetention.SOURCE)
 annotation class Context(val value: String)
+
+@Retention(AnnotationRetention.SOURCE)
+annotation class Immutable

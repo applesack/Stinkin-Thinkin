@@ -10,6 +10,7 @@ import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.Json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.awaitBlocking
+import xyz.scootaloo.thinking.server.dav.util.ContentType
 import xyz.scootaloo.thinking.server.dav.util.JsonToXml
 
 /**
@@ -27,9 +28,8 @@ interface EventbusMessageHelper {
 
     suspend fun RoutingContext.smartReply(ebMessage: JsonObject) {
         val state = ebMessage.getInteger(BusJsonConstant.state)
-        if (state != null) {
-            fail(state)
-            return
+        if (state != null && state != 0) {
+            response().statusCode = state
         }
 
         when (val contType = ebMessage.getInteger(BusJsonConstant.guide)) {
@@ -42,6 +42,10 @@ interface EventbusMessageHelper {
             MessageType.REST.code -> {
                 throw UnsupportedOperationException("content-type restful not support")
             }
+            MessageType.HTML.code -> {
+                val html = ebMessage.getString(BusJsonConstant.body)
+                replyWithHtml(html)
+            }
             else -> {
                 throw UnsupportedOperationException("content-type '$contType' not support")
             }
@@ -51,18 +55,27 @@ interface EventbusMessageHelper {
     fun buildXmlMessage(
         shell: String, state: Int = 0, lazy: (StateHolder<Int, Any>) -> Unit,
     ): SmartJsonMessage {
-        return SmartJsonMessage(MessageType.XML.code, state, shell, null, lazy)
+        return SmartJsonMessage(state, MessageType.XML.code, shell, null, lazy)
+    }
+
+    fun buildHtmlMessage(lazy: (StateHolder<Int, Any>) -> Unit): SmartJsonMessage {
+        return SmartJsonMessage(0, MessageType.HTML.code, 0, null, lazy)
     }
 
     fun RoutingContext.replyWithXml(xml: String) {
-        val response = response()
-        response.putHeader(HttpHeaders.CONTENT_TYPE, "application/xml; charset=\"utf-8\"")
+        response().putHeader(HttpHeaders.CONTENT_TYPE, ContentType.xml())
         end(xml)
+    }
+
+    fun RoutingContext.replyWithHtml(html: String) {
+        response().putHeader(HttpHeaders.CONTENT_TYPE, ContentType.html())
+        end(html)
     }
 
     enum class MessageType(val code: Int) {
         XML(0),
-        REST(1)
+        REST(1),
+        HTML(3)
     }
 
     class SmartJsonMessage(

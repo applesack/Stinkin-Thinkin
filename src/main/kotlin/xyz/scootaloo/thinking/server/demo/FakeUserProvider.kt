@@ -16,7 +16,6 @@ object FakeUserProvider : UserProvider {
     class EUser(
         override val id: Int = 0,
         override val username: String,
-        override val password: String = "123456",
-        override val role: Int = 7,
+        override val password: String = "123456"
     ) : User
 }

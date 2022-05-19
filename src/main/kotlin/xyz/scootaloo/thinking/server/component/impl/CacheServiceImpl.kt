@@ -71,7 +71,7 @@ object CacheServiceImpl : SingletonVertxService(), CacheService {
             request.reply(null)
         }
 
-        log.info("eventbus Cache service ready; current context: $contextName")
+        log.info("eventbus 'Cache' service ready; current context: $contextName")
     }
 
     override fun crontab(): VertxCrontab = AutoGCCacheCrontab

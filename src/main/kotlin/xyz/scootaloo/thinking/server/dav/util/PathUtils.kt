@@ -43,7 +43,12 @@ object PathUtils {
     }
 
     fun fileContentType(mainName: String): String {
-        TODO()
+        val pointerIdx = mainName.indexOf('.')
+        return if (pointerIdx < 0) {
+            ContentType.bin()
+        } else {
+            ContentType.of(mainName.substring(pointerIdx + 1))
+        }
     }
 
 }

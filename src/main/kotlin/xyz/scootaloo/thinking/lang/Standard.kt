@@ -28,10 +28,11 @@ fun VertxHttpApplication.getLogger(name: String): Logger {
     return LoggerFactory.getLogger("http:$name")
 }
 
-inline fun <T : Any> T?.ifNotNull(block: (T) -> Unit) {
+inline fun <T : Any> T?.ifNotNull(block: (T) -> Unit): T? {
     if (this != null) {
         block(this)
     }
+    return this
 }
 
 infix fun String.like(other: String): Boolean {

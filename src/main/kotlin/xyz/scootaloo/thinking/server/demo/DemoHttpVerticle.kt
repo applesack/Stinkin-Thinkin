@@ -17,7 +17,7 @@ object DemoHttpVerticle : VertxServiceRegisterCenter() {
     override suspend fun start() {
         initServices(DemoServer)
         val router = VertxHttpAppAssemblyFactory(
-            vertx, FakeUserProvider, entrance = this::startCoroutine
+            this, FakeUserProvider
         ).assembles(listOf(
                 DemoCacheApplication,
                 DemoDigestApplication

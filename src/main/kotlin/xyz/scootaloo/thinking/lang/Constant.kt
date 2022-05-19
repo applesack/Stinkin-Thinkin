@@ -9,4 +9,9 @@ object Constant {
     const val SUBJECT = "subject"
 
     const val UNKNOWN = "unknown"
+
+    const val ID = "id"
+    const val USERNAME = "username"
+    const val PASSWORD = "password"
+    const val CREATION_DATE = "creationDate"
 }

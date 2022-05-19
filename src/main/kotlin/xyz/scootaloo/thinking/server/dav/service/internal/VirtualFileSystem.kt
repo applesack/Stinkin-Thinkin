@@ -33,11 +33,14 @@ object VirtualFileSystem : VertxUtils {
      * 搜索范围内的文件信息
      *
      * @param path 相对路径(相对于基础路径[basePath])
+     * @param noRoot 搜索结果中是否包含根节点
      * @param depth 搜索范围, 只处理0和1; 0即只包含[path], 1(如果[path]是一个目录, 则还会搜索其子内容)
      * @return 返回一个二元组, 第一个值标识[path]是否存在, 第二个值包含了所有满足[depth]范围内的文件信息;
      * 如果[path]不存在, 则第二个值永远为空
      */
-    suspend fun viewFiles(path: String, depth: Int, fs: FileSystem): Pair<Boolean, List<AFile>> {
+    suspend fun viewFiles(
+        path: String, depth: Int, noRoot: Boolean, fs: FileSystem,
+    ): Pair<Boolean, List<AFile>> {
         val fullPath = Path(basePath, path).absolutePathString()
         val exists = fs.exists(fullPath).await()
         if (!exists) {
@@ -59,6 +62,10 @@ object VirtualFileSystem : VertxUtils {
                     result.add(it)
                 }
             }
+        }
+
+        if (noRoot && result.isNotEmpty()) {
+            result.removeFirst()
         }
 
         return true to result
@@ -134,8 +141,29 @@ object VirtualFileSystem : VertxUtils {
         }
     }
 
+    /**
+     * 文件缓存:
+     *
+     * 缓存最常浏览的文件的信息, 避免频繁访问文件系统;
+     *
+     * 获取单个文件 [getSingle]
+     * 获取一组文件 [getGroup]
+     *
+     * -----------------------------------------
+     * 缓存运行机制:
+     *
+     *
+     */
     private object FileCache {
         private val cache = LRUCache<String, AFile>(512)
+
+        suspend fun getSingle(path: String): AFile? {
+            TODO()
+        }
+
+        suspend fun getGroup(path: String): List<AFile> {
+            TODO()
+        }
 
         fun getFile(path: String): AFile? {
             return cache[path]

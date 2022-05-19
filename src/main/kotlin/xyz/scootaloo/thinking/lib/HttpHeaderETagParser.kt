@@ -18,7 +18,6 @@ import xyz.scootaloo.thinking.struct.http.ETagJsonStruct
 private const val weakMark = "\\W"
 private val invalidETag = ETag(false, "")
 
-@Version("1")
 @TestOnly
 fun HttpHeader.parseETag(text: String): Pair<Boolean, ETag> {
     val (valid, json) = parseETagAsJson(text)

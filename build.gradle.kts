@@ -17,7 +17,7 @@ dependencies {
 
     implementation("cn.hutool:hutool-all:5.7.18")
 
-    val vertxVersion = "4.2.7"
+    val vertxVersion = "4.3.0"
     implementation("io.vertx:vertx-core:$vertxVersion")
     implementation("io.vertx:vertx-config:$vertxVersion")
     implementation("io.vertx:vertx-web:$vertxVersion")

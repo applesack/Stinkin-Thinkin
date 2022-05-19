@@ -10,7 +10,7 @@ import xyz.scootaloo.thinking.util.Convert
  * @author flutterdash@qq.com
  * @since 2022/5/13 20:32
  */
-object DigestAuthServiceImpl  : SingletonVertxService(), DigestAuthService {
+object DigestAuthServiceImpl : SingletonVertxService(), DigestAuthService {
     override val log by lazy { getLogger("auth:digest") }
     override val context = ContextRegedit.httpServer
     private lateinit var provider: UserProvider
@@ -69,6 +69,7 @@ object DigestAuthServiceImpl  : SingletonVertxService(), DigestAuthService {
     private fun RoutingContext.method(): String {
         return request().method().toString()
     }
+
     private object Helper {
         fun parseAuthHeader(
             authorization: String, method: String,

@@ -10,8 +10,6 @@ import xyz.scootaloo.thinking.server.dav.service.impl.FileServiceImpl
  */
 interface FileService : VertxService {
 
-    suspend fun viewFiles(path: String, depth: Int): Pair<Boolean, List<AFile>>
-
     companion object : VertxService.SingletonFactory<FileService>(FileServiceImpl)
 
 }

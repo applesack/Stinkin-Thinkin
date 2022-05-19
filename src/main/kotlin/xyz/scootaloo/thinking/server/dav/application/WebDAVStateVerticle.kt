@@ -6,6 +6,9 @@ import org.ktorm.database.Database
 import xyz.scootaloo.thinking.lang.VertxServiceRegisterCenter
 import xyz.scootaloo.thinking.lang.getLogger
 import xyz.scootaloo.thinking.server.dav.WebDAVServer
+import java.sql.Connection
+import java.sql.DriverManager
+import kotlin.concurrent.thread
 
 /**
  * @author flutterdash@qq.com
@@ -45,10 +48,20 @@ object WebDAVStateVerticle : VertxServiceRegisterCenter() {
     }
 
     private fun safeCreateDatabaseRef(): Database? = try {
-        Database.connect(
-            driver = "org.sqlite.JDBC",
-            url = "jdbc:sqlite:$db"
+        // https://www.ktorm.org/zh-cn/connect-to-databases.html
+        Class.forName("org.sqlite.JDBC")
+        val conn = DriverManager.getConnection("jdbc:sqlite:$db")
+        Runtime.getRuntime().addShutdownHook(
+            thread(start = false) {
+                conn.close()
+            }
         )
+        Database.connect {
+            object : Connection by conn {
+                override fun close() {
+                }
+            }
+        }
     } catch (e: Throwable) {
         log.error("an error when create database instance", e)
         null

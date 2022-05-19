@@ -7,6 +7,7 @@ import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
 import xyz.scootaloo.thinking.server.dav.domain.core.AFile
 import xyz.scootaloo.thinking.server.dav.service.FileService
 import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem
+import xyz.scootaloo.thinking.server.dav.util.ContentType
 import java.nio.file.NotDirectoryException
 
 /**
@@ -19,6 +20,11 @@ object FileServiceImpl : SingletonVertxService(), FileService {
     override val context = WebDAVContext.file
 
     override suspend fun start() {
+        scanHome()
+        ContentType.refreshData(fs)
+    }
+
+    private suspend fun scanHome() {
         val mounted = VirtualFileSystem.basePath
         if (fs.exists(mounted).await()) {
             val props = fs.props(mounted).await()
@@ -32,10 +38,6 @@ object FileServiceImpl : SingletonVertxService(), FileService {
 
         val (dirCount, fileCount) = VirtualFileSystem.initDirectoryStruct(fs)
         log.info("path [$mounted] has been mounted, dir $dirCount, file $fileCount")
-    }
-
-    override suspend fun viewFiles(path: String, depth: Int): Pair<Boolean, List<AFile>> {
-        return VirtualFileSystem.viewFiles(path, depth, fs)
     }
 
 }

@@ -2,6 +2,8 @@ package xyz.scootaloo.thinking.lang
 
 import io.vertx.core.Future
 import io.vertx.core.Promise
+import io.vertx.ext.web.RequestBody
+import io.vertx.ext.web.RoutingContext
 
 /**
  * @author flutterdash@qq.com
@@ -20,4 +22,16 @@ inline fun <T, R> Future<T>.trans(crossinline lazy: (T) -> R): Future<R> {
             Future.failedFuture(done.cause())
         }
     }
+}
+
+fun RequestBody.safeAsString(): String? = try {
+    this.asString()
+} catch (error: Throwable) {
+    null
+}
+
+fun <T> RequestBody.safeAsPojo(type: Class<T>): T? = try {
+    asPojo(type)
+} catch (error: Throwable) {
+    null
 }

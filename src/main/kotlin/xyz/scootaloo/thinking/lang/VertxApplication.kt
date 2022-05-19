@@ -4,7 +4,6 @@ package xyz.scootaloo.thinking.lang
 
 import io.vertx.core.Future
 import io.vertx.core.Vertx
-import io.vertx.core.http.HttpHeaders
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Route
@@ -124,22 +123,44 @@ abstract class VertxHttpApplication(private val entrance: CoroutineEntrance) {
 }
 
 class VertxHttpAppAssemblyFactory(
-    val vertx: Vertx,
+    private val registerCenter: VertxServiceRegisterCenter,
     private val provider: UserProvider,
-    private val entrance: CoroutineEntrance,
+    private val vertx: Vertx = registerCenter.vertx,
+    private val entrance: CoroutineEntrance = registerCenter::startCoroutine,
 ) {
 
     fun assembles(factories: List<VertxHttpApplication.InstanceFactory>): Router {
         val rootRouter = Router.router(vertx)
+        val log = registerCenter.log
+        rootRouter.route().handler {
+            preHandler(log, it)
+            it.next()
+        }
         rootRouter.route().handler(bodyHandler())
         val apps = factories.map { it(entrance) }
         for (app in apps) {
             val subRouter = Router.router(vertx)
-            subRouter.mountAuthenticator(app.auth)
-            app.config(subRouter)
-            rootRouter.mountSubRouter(app.mountPoint, subRouter)
+            safeDoConfig(log, app, rootRouter, subRouter)
         }
         return rootRouter
+    }
+
+    private fun preHandler(log: Logger, ctx: RoutingContext) {
+        val request = ctx.request()
+        val remote = request.remoteAddress().hostAddress()
+        val method = request.method().name()
+        val uri = request.uri()
+        log.info("$remote $method $uri")
+    }
+
+    private fun safeDoConfig(
+        log: Logger, app: VertxHttpApplication, root: Router, child: Router,
+    ) = try {
+        child.mountAuthenticator(app.auth)
+        app.config(child)
+        root.mountSubRouter(app.mountPoint, child)
+    } catch (error: Throwable) {
+        log.error("mount router error", error)
     }
 
     private fun Router.mountAuthenticator(mode: AuthMode) {
@@ -192,14 +213,12 @@ interface User {
     val id: Int
     val username: String
     val password: String
-    val role: Int
 
     fun jsonify(): JsonObject {
         return Json.obj {
-            this["id"] = id
-            this["username"] = username
-            this["password"] = password
-            this["role"] = role
+            this[Constant.ID] = id
+            this[Constant.USERNAME] = username
+            this[Constant.PASSWORD] = password
         }
     }
 }
