@@ -39,7 +39,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
     override var context = WebDAVContext.file
 
     override suspend fun handle(ctx: RoutingContext) {
-        val arguments = resolveRequestArguments(ctx)
+        val arguments = Resolver.resolveRequest(ctx)
         val result = eb.callService(InternalProtocol.propFind, arguments).await()
         ctx.smartReply(result.body())
     }
@@ -50,10 +50,6 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
         }
 
         log.info("eventbus 'PropFind' service ready; current context: $contextName")
-    }
-
-    private suspend fun resolveRequestArguments(ctx: RoutingContext): JsonObject {
-        return awaitBlocking { Resolver.resolveRequestBody(ctx) }
     }
 
     private object InternalProtocol {
@@ -76,11 +72,13 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
          * 如果xml请求体中带有prop属性, 则响应体中只会返回服务器能处理并且prop中含有的属性;
          * 如果xml请求体中带有prop属性, 则忽略之前计算得到的allProp值, 将这个值重置为false;
          */
-        fun resolveRequestBody(ctx: RoutingContext): JsonObject {
-            val result = Json.obj { resolveDefault(ctx) }
-            val xmlBody = ctx.body().asString() ?: return result
-            val document = safeParseXml(log, xmlBody) ?: return result
-            return result.resolveXmlBody(document)
+        suspend fun resolveRequest(ctx: RoutingContext): JsonObject {
+            return awaitBlocking block@{
+                val result = Json.obj { resolveDefault(ctx) }
+                val xmlBody = ctx.body().asString() ?: return@block result
+                val document = safeParseXml(log, xmlBody) ?: return@block result
+                result.resolveXmlBody(document)
+            }
         }
 
         private fun JsonObject.resolveDefault(ctx: RoutingContext): JsonObject {
@@ -118,6 +116,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
          *          "href": string
          *     }]
          * }
+         * ```
          */
         suspend fun handle(request: Message<JsonObject>, fs: FileSystem) {
             val param = buildParam(request.body())
@@ -127,14 +126,13 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
 
             if (!exists) {
                 return buildHtmlMessage {
+                    it.state = Status.notFound
                     it.data = ResponseStore.fileNotFount
                 }.reply(request)
             }
 
             buildXmlMessage(DAVLabels.multiStatus) scope@{
                 val json = JsonObject()
-                it.state = 207
-                it.data = json
                 if (files.isEmpty()) {
                     return@scope
                 }
@@ -147,6 +145,9 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
                 if (!multiResponse.isEmpty) {
                     json[DAVLabels.response] = multiResponse
                 }
+
+                it.state = Status.multiStatus
+                it.data = json
             }.reply(request)
         }
 
@@ -241,11 +242,16 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
         }
     }
 
+    private object Status {
+        const val notFound = 404
+        const val multiStatus = 207
+    }
+
     private class Param(
         val subject: String,
         val depth: Depth,
         val allProp: Boolean,
-        val props: Set<String>?
+        val props: Set<String>?,
     )
 
 }
