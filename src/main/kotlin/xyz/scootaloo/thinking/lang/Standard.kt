@@ -61,6 +61,16 @@ inline fun <T : Any> Pair<Boolean, T>.ifValid(block: (T) -> Unit) {
     }
 }
 
+fun <K, V> MutableMap<K, V>.putIfAbsent(key: K, lazy: () -> V): V {
+    val exists = this[key]
+    if (exists == null) {
+        val newValue = lazy()
+        this[key] = newValue
+        return newValue
+    }
+    return exists
+}
+
 interface Nameable {
     val name: String
 }

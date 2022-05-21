@@ -3,7 +3,6 @@ package xyz.scootaloo.thinking.server.dav.service.internal
 import io.vertx.core.file.FileSystem
 import io.vertx.ext.web.impl.LRUCache
 import io.vertx.kotlin.coroutines.await
-import io.vertx.kotlin.coroutines.awaitBlocking
 import kotlinx.coroutines.coroutineScope
 import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
@@ -11,6 +10,8 @@ import xyz.scootaloo.thinking.server.dav.domain.core.AFile
 import xyz.scootaloo.thinking.server.dav.domain.core.File
 import xyz.scootaloo.thinking.server.dav.domain.dao.FileDAO
 import xyz.scootaloo.thinking.server.dav.domain.dao.UserDAO
+import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem.FileCache.getGroup
+import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem.FileCache.getSingle
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
 import xyz.scootaloo.thinking.server.dav.util.SentryNode
 import java.util.*
@@ -251,8 +252,8 @@ object VirtualFileSystem : VertxUtils {
         }
 
         private suspend fun asyncFindAuthor(path: String): String {
-            val file = awaitBlocking { FileDAO.findRecord(path) } ?: return Constant.UNKNOWN
-            val user = awaitBlocking { UserDAO.findById(file.author) } ?: return Constant.UNKNOWN
+            val file = awaitParallelBlocking { FileDAO.findRecord(path) } ?: return Constant.UNKNOWN
+            val user = awaitParallelBlocking { UserDAO.findById(file.author) } ?: return Constant.UNKNOWN
             return user.username
         }
     }

@@ -9,7 +9,6 @@ import io.vertx.kotlin.core.json.Json
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
-import io.vertx.kotlin.coroutines.awaitBlocking
 import org.dom4j.Document
 import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.lib.HttpHeaderHelper
@@ -73,7 +72,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
          * 如果xml请求体中带有prop属性, 则忽略之前计算得到的allProp值, 将这个值重置为false;
          */
         suspend fun resolveRequest(ctx: RoutingContext): JsonObject {
-            return awaitBlocking block@{
+            return awaitParallelBlocking block@{
                 val result = Json.obj { resolveDefault(ctx) }
                 val xmlBody = ctx.body().asString() ?: return@block result
                 val document = safeParseXml(log, xmlBody) ?: return@block result
