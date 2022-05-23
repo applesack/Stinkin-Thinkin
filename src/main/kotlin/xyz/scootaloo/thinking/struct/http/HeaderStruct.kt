@@ -75,3 +75,8 @@ class Depth(
     val depth: Int,
     val noRoot: Boolean
 )
+
+class Range(
+    val offset: Long,
+    val end: Long
+)

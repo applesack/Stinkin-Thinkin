@@ -11,10 +11,7 @@ import xyz.scootaloo.thinking.server.component.CrontabService
 import xyz.scootaloo.thinking.server.dav.application.WebDAVFileVerticle
 import xyz.scootaloo.thinking.server.dav.application.WebDAVHttpVerticle
 import xyz.scootaloo.thinking.server.dav.application.WebDAVStateVerticle
-import xyz.scootaloo.thinking.server.dav.service.AccountService
-import xyz.scootaloo.thinking.server.dav.service.DAVLockService
-import xyz.scootaloo.thinking.server.dav.service.DAVPropFindService
-import xyz.scootaloo.thinking.server.dav.service.FileService
+import xyz.scootaloo.thinking.server.dav.service.*
 
 /**
  * @author flutterdash@qq.com
@@ -41,6 +38,8 @@ object WebDAVServer : VertxServer() {
             AccountService.factory(),
             DAVPropFindService.factory(),
             DAVLockService.factory(),
+            DAVMkColService.factory(),
+            StaticResourcesService.factory(),
             FileService.factory()
         )
     }

@@ -72,6 +72,22 @@ object VirtualFileSystem : VertxUtils {
         return true to result
     }
 
+    fun isParentDirectoryExists(path: String): Boolean {
+        return Viewer.hasParentDirectory(path)
+    }
+
+    fun isDirectoryExists(path: String): Boolean {
+        return Viewer.hasDirectory(path)
+    }
+
+    suspend fun createDirectory(path: String, fs: FileSystem) {
+        Struct.createDirectory(path, fs)
+    }
+
+    fun fullPath(file: String): String {
+        return Helper.fullPath(file)
+    }
+
     /**
      * 初始化虚拟文件系统
      *
@@ -81,7 +97,7 @@ object VirtualFileSystem : VertxUtils {
         val (dirCount, fileCount, dirs) = Helper.scanDirectories(basePath, fs)
         for (dir in dirs) {
             val dirPath = PathUtils.extractRelativePath(dir, basePath)
-            Struct.createDirectory(dirPath)
+            Struct.createVirtualDirectory(dirPath)
         }
         // 根目录不在目录数的计算之内
         return (dirCount - 1) to fileCount
@@ -111,6 +127,13 @@ object VirtualFileSystem : VertxUtils {
             return true
         }
 
+        fun hasParentDirectory(path: String): Boolean {
+            val idx = path.lastIndexOf('/')
+            if (idx < 0)
+                return false
+            return hasDirectory(path.substring(0, idx))
+        }
+
         fun hasDirectory(path: String): Boolean {
             val pathItems = Helper.pathSplit(path, '/')
             var current: SentryNode = root
@@ -127,7 +150,15 @@ object VirtualFileSystem : VertxUtils {
     }
 
     private object Struct {
-        fun createDirectory(path: String) {
+        @kotlin.jvm.Throws(FileAlreadyExistsException::class)
+        suspend fun createDirectory(path: String, fs: FileSystem) {
+            val fullPath = Helper.fullPath(path)
+            fs.mkdir(fullPath).await()
+            // 创建目录成功
+            createVirtualDirectory(path)
+        }
+
+        fun createVirtualDirectory(path: String) {
             val pathItems = Helper.pathSplit(path, '/')
             var current: SentryNode = root
             for (idx in pathItems.indices) {
@@ -236,6 +267,10 @@ object VirtualFileSystem : VertxUtils {
                 return Triple(true, relative, exists)
 
             return Triple(false, relative, asyncFindFile(fullPath, relative, fs))
+        }
+
+        fun fullPath(relativePath: String): String {
+            return Path(basePath, relativePath).absolutePathString()
         }
 
         private suspend fun asyncFindFile(fullPath: String, path: String, fs: FileSystem): AFile? {

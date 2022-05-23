@@ -126,22 +126,24 @@ class VertxHttpAppAssemblyFactory(
     private val registerCenter: VertxServiceRegisterCenter,
     private val provider: UserProvider,
     private val vertx: Vertx = registerCenter.vertx,
-    private val entrance: CoroutineEntrance = registerCenter::startCoroutine,
+    private val entrance: CoroutineEntrance = registerCenter::startCoroutine
 ) {
 
     fun assembles(factories: List<VertxHttpApplication.InstanceFactory>): Router {
         val rootRouter = Router.router(vertx)
         val log = registerCenter.log
+        rootRouter.route().handler(bodyHandler())
         rootRouter.route().handler {
             preHandler(log, it)
             it.next()
         }
-        rootRouter.route().handler(bodyHandler())
+
         val apps = factories.map { it(entrance) }
         for (app in apps) {
             val subRouter = Router.router(vertx)
             safeDoConfig(log, app, rootRouter, subRouter)
         }
+
         return rootRouter
     }
 
@@ -158,7 +160,7 @@ class VertxHttpAppAssemblyFactory(
     ) = try {
         child.mountAuthenticator(app.auth)
         app.config(child)
-        root.mountSubRouter(app.mountPoint, child)
+        root.route(app.mountPoint).subRouter(child)
     } catch (error: Throwable) {
         log.error("mount router error", error)
     }

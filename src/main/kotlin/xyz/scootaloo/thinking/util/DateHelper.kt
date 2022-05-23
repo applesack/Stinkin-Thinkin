@@ -3,9 +3,9 @@ package xyz.scootaloo.thinking.util
 import org.junit.jupiter.api.Test
 import xyz.scootaloo.thinking.lang.TestDsl
 import xyz.scootaloo.thinking.lang.currentTimeMillis
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -16,17 +16,15 @@ import java.util.*
 object DateHelper {
 
     private val rfc1123 = DateTimeFormatter.RFC_1123_DATE_TIME
-    private val zoneId = ZoneId.systemDefault()
+    private val ZONE_GMT = ZoneId.of("GMT")
 
-    fun formatRFC1123(date: Long): String {
-        val instant = Date(date).toInstant()
-        val zonedDateTime = ZonedDateTime.ofInstant(instant, zoneId)
-        return rfc1123.format(zonedDateTime)
+    fun formatRFC1123(date: Long = currentTimeMillis()): String {
+        return rfc1123.format(Instant.ofEpochMilli(date).atZone(ZONE_GMT))
     }
 
     fun formatDateTimeTZ(date: Long): String {
         val instant = Date(date).toInstant()
-        return LocalDateTime.ofInstant(instant, zoneId).toString()
+        return LocalDateTime.ofInstant(instant, ZONE_GMT).toString()
     }
 
 }

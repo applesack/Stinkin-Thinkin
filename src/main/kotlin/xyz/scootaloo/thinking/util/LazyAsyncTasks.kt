@@ -17,14 +17,18 @@ import xyz.scootaloo.thinking.lang.putIfAbsent
  * @author flutterdash@qq.com
  * @since 2022/5/21 15:32
  */
-class LazyAsyncTasks<R>(private val vertx: Vertx, private val gen: (String) -> R) {
-    private val map = HashMap<String, Future<R>>()
+class LazyAsyncTasks<K, R>(private val vertx: Vertx, private val gen: (K) -> R?) {
+    private val map = HashMap<K, Future<R?>>()
 
-    operator fun contains(id: String): Boolean {
+    operator fun contains(id: K): Boolean {
         return id in map
     }
 
-    fun execute(id: String): Future<R> {
+    operator fun get(id: K): Future<R?> {
+        return execute(id)
+    }
+
+    fun execute(id: K): Future<R?> {
         return map.putIfAbsent(id) {
             vertx.executeBlocking({
                 it complete gen(id)
@@ -40,7 +44,7 @@ private class LazyAsyncTasksUnitTest : TestDsl {
     @Test
     fun test(): Unit = runBlocking {
         val vertx = Vertx.vertx()
-        val tasks = LazyAsyncTasks(vertx) { blocking(it) }
+        val tasks = LazyAsyncTasks<String, String>(vertx) { blocking(it) }
         tasks.execute("22222222222")
         tasks.execute("11111111111")
         launch { tasks.execute("11111111111").await().log() }

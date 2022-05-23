@@ -10,7 +10,7 @@ import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.Json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.awaitBlocking
-import xyz.scootaloo.thinking.server.dav.util.ContentType
+import xyz.scootaloo.thinking.lib.HttpHeaderHelper
 import xyz.scootaloo.thinking.server.dav.util.JsonToXml
 
 /**
@@ -24,7 +24,7 @@ fun EventBus.callService(address: String, data: GenericMessageFormat): Future<Me
     return request(address, data, deliveryOptionsOf(localOnly = true))
 }
 
-interface EventbusMessageHelper {
+interface EventbusMessageHelper : HttpHeaderHelper {
 
     suspend fun RoutingContext.smartReply(ebMessage: JsonObject) {
         val state = ebMessage.getInteger(BusJsonConstant.state)
@@ -46,6 +46,10 @@ interface EventbusMessageHelper {
                 val html = ebMessage.getString(BusJsonConstant.body)
                 replyWithHtml(html)
             }
+            MessageType.RAW.code -> {
+                val content = ebMessage.getString(BusJsonConstant.body)
+                reply(content)
+            }
             else -> {
                 throw UnsupportedOperationException("content-type '$contType' not support")
             }
@@ -62,20 +66,33 @@ interface EventbusMessageHelper {
         return SmartJsonMessage(0, MessageType.HTML.code, 0, null, lazy)
     }
 
+    fun buildRawMessage(lazy: (StateHolder<Int, Any>) -> Unit): SmartJsonMessage {
+        return SmartJsonMessage(0, MessageType.RAW.code, 0, null, lazy)
+    }
+
     fun RoutingContext.replyWithXml(xml: String) {
-        response().putHeader(HttpHeaders.CONTENT_TYPE, ContentType.xml())
+        response().putHeader(HttpHeaders.CONTENT_TYPE, contentTypeOf("xml"))
         end(xml)
     }
 
+    fun RoutingContext.reply(msg: String?) {
+        if (msg != null) {
+            end(msg)
+        } else {
+            end()
+        }
+    }
+
     fun RoutingContext.replyWithHtml(html: String) {
-        response().putHeader(HttpHeaders.CONTENT_TYPE, ContentType.html())
+        response().putHeader(HttpHeaders.CONTENT_TYPE, contentTypeOf("html"))
         end(html)
     }
 
     enum class MessageType(val code: Int) {
         XML(0),
         REST(1),
-        HTML(3)
+        HTML(3),
+        RAW(4)
     }
 
     class SmartJsonMessage(

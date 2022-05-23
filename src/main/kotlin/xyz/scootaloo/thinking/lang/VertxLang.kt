@@ -19,6 +19,10 @@ infix fun <T> Promise<T>.complete(value: T?) {
     this.complete(value)
 }
 
+fun <T> T.wrapInFut(): Future<T> {
+    return Future.succeededFuture(this)
+}
+
 inline fun <T, R> Future<T>.trans(crossinline lazy: (T) -> R): Future<R> {
     return this.transform { done ->
         if (done.succeeded()) {

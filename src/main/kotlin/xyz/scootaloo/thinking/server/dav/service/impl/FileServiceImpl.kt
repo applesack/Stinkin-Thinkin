@@ -4,10 +4,8 @@ import io.vertx.kotlin.coroutines.await
 import xyz.scootaloo.thinking.lang.SingletonVertxService
 import xyz.scootaloo.thinking.lang.getLogger
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
-import xyz.scootaloo.thinking.server.dav.domain.core.AFile
 import xyz.scootaloo.thinking.server.dav.service.FileService
 import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem
-import xyz.scootaloo.thinking.server.dav.util.ContentType
 import java.nio.file.NotDirectoryException
 
 /**
@@ -21,7 +19,6 @@ object FileServiceImpl : SingletonVertxService(), FileService {
 
     override suspend fun start() {
         scanHome()
-        ContentType.refreshData(fs)
     }
 
     private suspend fun scanHome() {

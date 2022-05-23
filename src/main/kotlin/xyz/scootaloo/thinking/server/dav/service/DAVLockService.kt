@@ -3,7 +3,7 @@ package xyz.scootaloo.thinking.server.dav.service
 import io.vertx.core.json.JsonObject
 import xyz.scootaloo.thinking.lang.Immutable
 import xyz.scootaloo.thinking.lang.VertxService
-import xyz.scootaloo.thinking.server.dav.service.impl.LockServiceImpl
+import xyz.scootaloo.thinking.server.dav.service.impl.LockImpl
 
 /**
  * @author flutterdash@qq.com
@@ -14,6 +14,6 @@ interface DAVLockService : VertxService {
     @Immutable
     fun displaySupportedLock(): JsonObject
 
-    companion object : VertxService.SingletonFactory<DAVLockService>(LockServiceImpl)
+    companion object : VertxService.SingletonFactory<DAVLockService>(LockImpl)
 
 }

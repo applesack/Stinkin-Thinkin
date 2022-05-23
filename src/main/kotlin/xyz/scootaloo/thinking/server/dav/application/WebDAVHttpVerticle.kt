@@ -20,23 +20,18 @@ object WebDAVHttpVerticle : VertxServiceRegisterCenter() {
     override suspend fun start() {
         val port = 2019
 
-        val router = VertxHttpAppAssemblyFactory(this, accountService)
-            .assembles(listOf(WebDAVHttpApplication))
+        try {
+            val router = VertxHttpAppAssemblyFactory(this, accountService)
+                .assembles(listOf(WebDAVHttpApplication))
 
-        vertx.createHttpServer()
-            .requestHandler(router)
-            .listen(port).await()
-        log.info("server started; listen port[$port]")
-    }
-
-    private suspend fun createHttpServer(port: Int): HttpServer? = try {
-        vertx.createHttpServer()
-    } catch (e: Throwable) {
-        null
-    }
-
-    private fun configHttpRouter() {
-
+            vertx.createHttpServer()
+                .requestHandler(router)
+                .listen(port).await()
+            log.info("server started; listen port[$port]")
+        } catch (error: Throwable) {
+            log.error("http boot failure", error)
+            closeServer()
+        }
     }
 
 }

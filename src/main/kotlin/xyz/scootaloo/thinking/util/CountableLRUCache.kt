@@ -10,8 +10,6 @@ import java.util.*
  *
  * 功能增强, 可以根据[V]以及[counter]来计算缓存的实际数量, 而不是简单判断集合元素个数
  *
- * 暴露[removeEldest]方法, 可以在外部手动删除最久未使用元素,
- *
  * [put] 如果插入键值对没有到达[maxSize]指定的上限, 则返回null,
  * 否则返回被淘汰的键值对(由于可能淘汰多个键值对, 所以返回的是列表)
  *
@@ -30,6 +28,10 @@ class CountableLRUCache<K : Any, V : Any>(
     init {
         head.next = tail
         tail.prev = head
+    }
+
+    operator fun contains(key: K): Boolean {
+        return key in map
     }
 
     operator fun get(key: K): V? {
@@ -59,7 +61,7 @@ class CountableLRUCache<K : Any, V : Any>(
     }
 
 
-    fun removeEldest(space: Int = -1): List<Pair<K, V>> {
+    private fun removeEldest(space: Int = -1): List<Pair<K, V>> {
         if (space < 0) {
             return listOf(removeTail().pair())
         }

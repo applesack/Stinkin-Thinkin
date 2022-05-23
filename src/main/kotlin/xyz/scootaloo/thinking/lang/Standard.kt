@@ -35,6 +35,12 @@ inline fun <T : Any> T?.ifNotNull(block: (T) -> Unit): T? {
     return this
 }
 
+inline fun <T : Any> T?.ifNull(block: () -> Unit) {
+    if (this == null) {
+        block()
+    }
+}
+
 infix fun String.like(other: String): Boolean {
     if (this.length != other.length)
         return false

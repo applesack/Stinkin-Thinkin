@@ -1,10 +1,12 @@
 package xyz.scootaloo.thinking.server.dav.util
 
+import xyz.scootaloo.thinking.lib.HttpHeaderHelper
+
 /**
  * @author flutterdash@qq.com
  * @since 2022/5/15 11:00
  */
-object PathUtils {
+object PathUtils : HttpHeaderHelper {
 
     fun mainName(path: String): String {
         val spIdx = path.lastIndexOf('/')
@@ -43,12 +45,7 @@ object PathUtils {
     }
 
     fun fileContentType(mainName: String): String {
-        val pointerIdx = mainName.indexOf('.')
-        return if (pointerIdx < 0) {
-            ContentType.bin()
-        } else {
-            ContentType.of(mainName.substring(pointerIdx + 1))
-        }
+        return contentTypeOf(mainName)
     }
 
 }

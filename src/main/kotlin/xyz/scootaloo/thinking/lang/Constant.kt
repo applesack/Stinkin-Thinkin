@@ -7,6 +7,7 @@ package xyz.scootaloo.thinking.lang
 object Constant {
     const val STATUS = "status"
     const val SUBJECT = "subject"
+    const val HOST = "host"
 
     const val UNKNOWN = "unknown"
 
