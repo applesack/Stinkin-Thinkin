@@ -64,7 +64,7 @@ rfc 4918
         9.10.6 锁请求的响应
         9.10.7 samples
         ...
-    9.11 状态码
+    9.11 UNLOCK
 10. 用于分布式创作的HTTP头
     10.1 DAV
     10.2 Depth
@@ -133,3 +133,21 @@ rfc 4918
 21. IANA考虑
 
 END
+
+
+---------------
+
+rfc-4918
+
+propfind ---- 完成
+proppatch --- todo
+mkcol ------- 完成
+get/head ---- 完成
+post -------- 跳过
+delete ------ todo
+put --------- todo
+copy -------- todo
+move -------- todo
+lock -------- todo
+unlock ------ todo
+

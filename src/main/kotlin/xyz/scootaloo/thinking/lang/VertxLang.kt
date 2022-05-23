@@ -52,7 +52,7 @@ private class VertxStandardUnitTest : TestDsl {
         vertx.deployVerticle(Verticle).await()
     }
 
-    object Verticle : CoroutineVerticle(), TestDsl {
+    private object Verticle : CoroutineVerticle(), TestDsl {
         override suspend fun start() {
             val start = currentTimeMillis()
             val job1 = async {

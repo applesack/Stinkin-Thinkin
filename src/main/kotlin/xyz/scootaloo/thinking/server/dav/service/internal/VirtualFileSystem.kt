@@ -10,6 +10,7 @@ import xyz.scootaloo.thinking.server.dav.domain.core.AFile
 import xyz.scootaloo.thinking.server.dav.domain.core.File
 import xyz.scootaloo.thinking.server.dav.domain.dao.FileDAO
 import xyz.scootaloo.thinking.server.dav.domain.dao.UserDAO
+import xyz.scootaloo.thinking.server.dav.service.FileService
 import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem.FileCache.getGroup
 import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem.FileCache.getSingle
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
@@ -48,7 +49,7 @@ object VirtualFileSystem : VertxUtils {
             return false to emptyList()
         }
 
-        if (!Viewer.hasFile(path)) {
+        if (!Viewer.guessFileExists(path)) {
             return false to emptyList()
         }
 
@@ -72,16 +73,43 @@ object VirtualFileSystem : VertxUtils {
         return true to result
     }
 
-    fun isParentDirectoryExists(path: String): Boolean {
-        return Viewer.hasParentDirectory(path)
-    }
-
     fun isDirectoryExists(path: String): Boolean {
         return Viewer.hasDirectory(path)
     }
 
-    suspend fun createDirectory(path: String, fs: FileSystem) {
-        Struct.createDirectory(path, fs)
+    /**
+     * @see FileService.createDirectory
+     */
+    suspend fun createDirectory(path: String, force: Boolean, fs: FileSystem): Int {
+        try {
+            val parentPath = Helper.parentPath(path)
+            if (!Viewer.hasDirectory(parentPath)) {
+                if (force) {
+                    val parentFullPath = Helper.fullPath(parentPath)
+                    fs.mkdirs(parentFullPath).await()
+                } else {
+                    return 2
+                }
+            }
+
+            val fullPath = Helper.fullPath(parentPath)
+            if (fs.exists(fullPath).await()) {
+                return 1
+            }
+
+            fs.mkdir(path).await()
+            Struct.createVirtualDirectory(path)
+            return 0
+        } catch (error: Throwable) {
+            log.error("en error when create directory: $path", error)
+            if (
+                error is io.vertx.core.file.FileSystemException &&
+                error.cause is java.nio.file.FileAlreadyExistsException
+            ) {
+                return 2
+            }
+            return 3
+        }
     }
 
     fun fullPath(file: String): String {
@@ -89,8 +117,9 @@ object VirtualFileSystem : VertxUtils {
     }
 
     /**
-     * 初始化虚拟文件系统
+     * ## 初始化虚拟文件系统
      *
+     * @param fs 需要一个[FileSystem]对象来完成一些操作
      * @return 一个二元组, 第一个值是根目录[basePath]下文件夹个数, 第二个值是文件个数
      */
     suspend fun initDirectoryStruct(fs: FileSystem): Pair<Int, Int> {
@@ -105,12 +134,14 @@ object VirtualFileSystem : VertxUtils {
 
     private object Viewer {
         /**
-         * 快速的检查文件系统中是否存在一个文件
+         * ## 快速的检查文件系统中是否存在一个文件
          *
+         * @param path 文件的相对路径
+         * @return
          * 返回true, 该文件不一定存在
          * 返回false, 该文件一定不存在
          */
-        fun hasFile(path: String): Boolean {
+        fun guessFileExists(path: String): Boolean {
             val pathItems = Helper.pathSplit(path, '/')
             var current: SentryNode = root
             for (idx in path.indices) {
@@ -125,13 +156,6 @@ object VirtualFileSystem : VertxUtils {
                 }
             }
             return true
-        }
-
-        fun hasParentDirectory(path: String): Boolean {
-            val idx = path.lastIndexOf('/')
-            if (idx < 0)
-                return false
-            return hasDirectory(path.substring(0, idx))
         }
 
         fun hasDirectory(path: String): Boolean {
@@ -150,14 +174,6 @@ object VirtualFileSystem : VertxUtils {
     }
 
     private object Struct {
-        @kotlin.jvm.Throws(FileAlreadyExistsException::class)
-        suspend fun createDirectory(path: String, fs: FileSystem) {
-            val fullPath = Helper.fullPath(path)
-            fs.mkdir(fullPath).await()
-            // 创建目录成功
-            createVirtualDirectory(path)
-        }
-
         fun createVirtualDirectory(path: String) {
             val pathItems = Helper.pathSplit(path, '/')
             var current: SentryNode = root
@@ -271,6 +287,13 @@ object VirtualFileSystem : VertxUtils {
 
         fun fullPath(relativePath: String): String {
             return Path(basePath, relativePath).absolutePathString()
+        }
+
+        fun parentPath(path: String): String {
+            val idx = path.lastIndexOf('/')
+            if (idx < 0)
+                return "/"
+            return path.substring(0, idx)
         }
 
         private suspend fun asyncFindFile(fullPath: String, path: String, fs: FileSystem): AFile? {

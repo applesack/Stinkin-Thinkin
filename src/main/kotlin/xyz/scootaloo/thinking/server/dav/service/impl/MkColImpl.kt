@@ -9,7 +9,7 @@ import io.vertx.kotlin.coroutines.await
 import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
 import xyz.scootaloo.thinking.server.dav.service.DAVMkColService
-import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem
+import xyz.scootaloo.thinking.server.dav.service.FileService
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
 import xyz.scootaloo.thinking.util.Convert
 
@@ -18,8 +18,7 @@ import xyz.scootaloo.thinking.util.Convert
  * @since 2022/5/19 16:23
  */
 object MkColImpl : SingletonVertxService(), DAVMkColService, EventbusMessageHelper {
-    private val log by lazy { getLogger("MkCol") }
-    override val context = WebDAVContext.file
+    override val context = WebDAVContext.httpServer
 
     override suspend fun handle(ctx: RoutingContext) {
         val param = Resolver.resolveRequest(ctx)
@@ -59,39 +58,19 @@ object MkColImpl : SingletonVertxService(), DAVMkColService, EventbusMessageHelp
 
     private object MkCol : EventbusMessageHelper {
 
+        private val fileService = FileService()
+
         suspend fun handle(request: Message<JsonObject>) {
             val param = prepareParam(request.body())
-            if (VirtualFileSystem.isDirectoryExists(param.path)) {
-                return buildRawMessage {
-                    it.state = Status.conflict
-                }.reply(request)
-            }
-
-            if (!VirtualFileSystem.isParentDirectoryExists(param.path)) {
-                return buildRawMessage {
-                    it.state = Status.notAllowed
-                }.reply(request)
-            }
-
-            return try {
-                VirtualFileSystem.createDirectory(param.path, fs)
-                log.info("create directory: ${param.path}")
-                buildRawMessage {
-                    it.state = Status.created
-                }.reply(request)
-            } catch (error: Throwable) {
-                log.error("en error when create directory: ${param.path}", error)
-                buildRawMessage {
-                    if (
-                        error is io.vertx.core.file.FileSystemException &&
-                        error.cause is java.nio.file.FileAlreadyExistsException
-                    ) {
-                        it.state = Status.conflict
-                    } else {
-                        it.state = Status.internalError
-                    }
-                }.reply(request)
-            }
+            val result = fileService.createDirectory(param.path).await()
+            buildRawMessage {
+                it.state = when (result) {
+                    0 -> Status.created
+                    1 -> Status.conflict
+                    2 -> Status.notAllowed
+                    else -> Status.internalError
+                }
+            }.reply(request)
         }
 
         private fun prepareParam(json: JsonObject): Param {

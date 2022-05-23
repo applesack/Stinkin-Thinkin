@@ -23,9 +23,9 @@ object CacheServiceImpl : SingletonVertxService(), CacheService {
 
     override fun put(key: String, value: String, expiryTime: Long): Future<Unit> {
         val requestBody = Json.obj {
-            this[Generic.key] = key
-            this[Generic.value] = value
-            this[Generic.expiry] = expiryTime
+            this[Term.key] = key
+            this[Term.value] = value
+            this[Term.expiry] = expiryTime
         }
         return eb.request<Unit>(InternalProtocol.put, requestBody).trans { }
     }
@@ -36,8 +36,8 @@ object CacheServiceImpl : SingletonVertxService(), CacheService {
 
     override fun updateKeyExpiry(key: String, newExpiryTime: Long): Future<Unit> {
         val requestBody = Json.obj {
-            this[Generic.key] = key
-            this[Generic.expiry] = newExpiryTime
+            this[Term.key] = key
+            this[Term.expiry] = newExpiryTime
         }
         return eb.request<Unit>(InternalProtocol.upd, requestBody).trans { }
     }
@@ -51,9 +51,9 @@ object CacheServiceImpl : SingletonVertxService(), CacheService {
         eb.consumer<JsonObject>(InternalProtocol.put) { request ->
             val json = request.body()
             CacheManager.put(
-                json.getString(Generic.key),
-                json.getString(Generic.value),
-                json.getLong(Generic.expiry)
+                json.getString(Term.key),
+                json.getString(Term.value),
+                json.getLong(Term.expiry)
             )
             request.reply(null)
         }
@@ -65,8 +65,8 @@ object CacheServiceImpl : SingletonVertxService(), CacheService {
         eb.consumer<JsonObject>(InternalProtocol.upd) { request ->
             val json = request.body()
             CacheManager.updateKeyExpiry(
-                json.getString(Generic.key),
-                json.getLong(Generic.expiry)
+                json.getString(Term.key),
+                json.getLong(Term.expiry)
             )
             request.reply(null)
         }
@@ -84,7 +84,7 @@ object CacheServiceImpl : SingletonVertxService(), CacheService {
         const val upd = "$prefix:updExp"
     }
 
-    private object Generic {
+    private object Term {
         const val key = "key"
         const val value = "value"
         const val expiry = "expiry"

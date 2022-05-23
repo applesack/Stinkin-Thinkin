@@ -250,7 +250,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
         val subject: String,
         val depth: Depth,
         val allProp: Boolean,
-        val props: Set<String>?,
+        val props: Set<String>?
     )
 
 }

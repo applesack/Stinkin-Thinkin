@@ -20,7 +20,7 @@ object DigestAuthServiceImpl : SingletonVertxService(), DigestAuthService {
     }
 
     override suspend fun handle(ctx: RoutingContext) {
-        val authorization = ctx.request().headers()[Terminology.H_AUTHORIZATION] ?: return challenge(ctx)
+        val authorization = ctx.request().headers()[Term.H_AUTHORIZATION] ?: return challenge(ctx)
         verify(ctx, authorization)
     }
 
@@ -53,7 +53,7 @@ object DigestAuthServiceImpl : SingletonVertxService(), DigestAuthService {
 
     private fun verified(ctx: RoutingContext, header: AuthorizationHeader, user: User) {
         ctx.response().putHeader(
-            Terminology.H_AUTHENTICATION_INFO, Helper.authorizationInfo(header, user.password)
+            Term.H_AUTHENTICATION_INFO, Helper.authorizationInfo(header, user.password)
         )
         putUserInContext(ctx, user)
         ctx.next()
@@ -61,8 +61,8 @@ object DigestAuthServiceImpl : SingletonVertxService(), DigestAuthService {
 
     private fun challenge(ctx: RoutingContext, stale: Boolean = false) {
         val response = ctx.response()
-        response.putHeader(Terminology.H_AUTHENTICATE, Helper.challenge(stale))
-        response.statusCode = Terminology.S_UNAUTHORIZED
+        response.putHeader(Term.H_AUTHENTICATE, Helper.challenge(stale))
+        response.statusCode = Term.S_UNAUTHORIZED
         response.end()
     }
 
@@ -74,8 +74,8 @@ object DigestAuthServiceImpl : SingletonVertxService(), DigestAuthService {
         fun parseAuthHeader(
             authorization: String, method: String,
         ): Pair<Boolean, ValueHolder<AuthorizationHeader>> {
-            if (authorization.startsWith(Terminology.DIGEST_PREFIX)) {
-                val rest = authorization.substring(Terminology.DIGEST_PREFIX.length + 1)
+            if (authorization.startsWith(Term.DIGEST_PREFIX)) {
+                val rest = authorization.substring(Term.DIGEST_PREFIX.length + 1)
                     .replace("\"", "")
                 val result = parseAuthHeaderCore(rest, method)
                 if (result != null) {
@@ -87,22 +87,22 @@ object DigestAuthServiceImpl : SingletonVertxService(), DigestAuthService {
 
         fun challenge(stale: Boolean = false): String {
             val parts = mutableListOf(
-                Triple(Terminology.C_REALM, Config.DEF_REALM, true),
-                Triple(Terminology.C_QOP, Config.DEF_QOP, true),
-                Triple(Terminology.C_NONCE, newNonce(), true)
+                Triple(Term.C_REALM, Config.DEF_REALM, true),
+                Triple(Term.C_QOP, Config.DEF_QOP, true),
+                Triple(Term.C_NONCE, newNonce(), true)
             )
             if (stale) {
-                parts.add(Triple(Terminology.C_STALE, "true", false))
+                parts.add(Triple(Term.C_STALE, "true", false))
             }
-            return "${Terminology.DIGEST_PREFIX} ${parts.format()}"
+            return "${Term.DIGEST_PREFIX} ${parts.format()}"
         }
 
         fun authorizationInfo(header: AuthorizationHeader, password: String): String {
             return listOf(
-                Triple(Terminology.C_QOP, Config.DEF_QOP, true),
-                Triple(Terminology.C_RSP_AUTH, rspAuth(header, password), true),
-                Triple(Terminology.C_CLIENT_NONCE, header.clientNonce, true),
-                Triple(Terminology.C_NONCE_COUNTER, header.nonceCounter, false)
+                Triple(Term.C_QOP, Config.DEF_QOP, true),
+                Triple(Term.C_RSP_AUTH, rspAuth(header, password), true),
+                Triple(Term.C_CLIENT_NONCE, header.clientNonce, true),
+                Triple(Term.C_NONCE_COUNTER, header.nonceCounter, false)
             ).format()
         }
 
@@ -119,16 +119,16 @@ object DigestAuthServiceImpl : SingletonVertxService(), DigestAuthService {
 
             return try {
                 AuthorizationHeader(
-                    username = params[Terminology.C_USER]
-                        ?: params[Terminology.C_USERNAME]!!,
-                    realm = params[Terminology.C_REALM]!!,
+                    username = params[Term.C_USER]
+                        ?: params[Term.C_USERNAME]!!,
+                    realm = params[Term.C_REALM]!!,
                     method = method,
-                    nonce = params[Terminology.C_NONCE]!!,
-                    uri = params[Terminology.C_URI]!!,
-                    nonceCounter = params[Terminology.C_NONCE_COUNTER]!!,
-                    clientNonce = params[Terminology.C_CLIENT_NONCE]!!,
-                    response = params[Terminology.C_RESPONSE]!!,
-                    qop = params[Terminology.C_QOP]!!
+                    nonce = params[Term.C_NONCE]!!,
+                    uri = params[Term.C_URI]!!,
+                    nonceCounter = params[Term.C_NONCE_COUNTER]!!,
+                    clientNonce = params[Term.C_CLIENT_NONCE]!!,
+                    response = params[Term.C_RESPONSE]!!,
+                    qop = params[Term.C_QOP]!!
                 )
             } catch (nullErr: NullPointerException) {
                 null
@@ -196,7 +196,7 @@ object DigestAuthServiceImpl : SingletonVertxService(), DigestAuthService {
         const val MAX_NONCE_AGE_SECONDS = 20
     }
 
-    private object Terminology {
+    private object Term {
         const val H_AUTHENTICATE = "WWW-Authenticate" // 质询
         const val H_AUTHORIZATION = "Authorization"   // 响应
         const val H_AUTHENTICATION_INFO = "Authentication-Info"
