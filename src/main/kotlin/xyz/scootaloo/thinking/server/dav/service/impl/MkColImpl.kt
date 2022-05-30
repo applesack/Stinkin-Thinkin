@@ -85,8 +85,6 @@ object MkColImpl : SingletonVertxService(), DAVMkColService, EventbusMessageHelp
     // https://www.rfc-editor.org/rfc/rfc4918#section-9.3.1
     private object Status {
         const val created = 201
-
-        //        const val forbidden = 403
         const val notAllowed = 405
         const val conflict = 409
         const val internalError = 500

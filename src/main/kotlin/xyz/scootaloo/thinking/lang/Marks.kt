@@ -24,3 +24,6 @@ annotation class Context(val value: String)
 
 @Retention(AnnotationRetention.SOURCE)
 annotation class Immutable
+
+@Retention(AnnotationRetention.SOURCE)
+annotation class Stateless

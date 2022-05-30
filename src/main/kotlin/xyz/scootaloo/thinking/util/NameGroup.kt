@@ -8,17 +8,17 @@ import kotlin.jvm.Throws
 import kotlin.math.abs
 
 /**
- * # 存储键值对, 用于在一些特定场景代替HashMap; (使用String作为键的时候, [Nameable])
+ * ## 存储键值对, 用于在一些特定场景代替HashMap; (使用String作为键的时候, [Nameable])
  *
- * ## 特性
+ * ### 特性
  * 调用[has], [add]操作后, 会记忆查找的结果, 然后调用[get]后可以直接将结果返回, 在增加少查找多的场景可以大幅度提速;
  * 仅使用一个数组作为数据结构, 当键值对较多时可以有效节省空间;
  *
- * ## 原理
+ * ### 原理
  * 将内部元素按照`hash`值升序排序, 使得查找时可以按照二分查找快速定位, 当有多个元素`hash`值一致时,
- * 先比较元素之间的长度, 可以快速跳过一些不可能相等的值, 然后再比较内容, 从元素的两端进行双指针遍历
+ * 先比较元素之间的长度, 可以快速跳过一些不可能相等的比较项, 然后再比较内容, 从元素的两端进行双指针遍历
  *
- * ## 使用到的算法
+ * ### 使用到的算法
  * 哈希, 二分查找, 双指针查找, 两端扩散
  *
  * @author flutterdash@qq.com
@@ -30,6 +30,12 @@ class NameGroup<T : Nameable> {
     private val size: Int get() = group.size
     private var findIdx = -1
 
+    /**
+     * ## 检查当前集合中是否存在[name]键
+     *
+     * @return
+     * 返回是否存在
+     */
     fun has(name: String): Boolean {
         if (group.isEmpty()) {
             return false
@@ -81,12 +87,22 @@ class NameGroup<T : Nameable> {
         return false
     }
 
+    /**
+     * ## 获取[has]或者[add]操作的结果
+     *
+     * @exception IndexOutOfBoundsException 如果此调用之前没有调用[has]或者[add], 则可能因为指针未更新而导致越界
+     * @return
+     * 返回[has]或者[add]的结果
+     */
     @Throws(IndexOutOfBoundsException::class)
     fun get(): T {
         @Suppress("UNCHECKED_CAST")
         return group[findIdx] as T
     }
 
+    /**
+     * ## 向集合中插入一个成员
+     */
     fun add(member: T) {
         if (size == 0) {
             group = arrayOf(member)
@@ -111,6 +127,9 @@ class NameGroup<T : Nameable> {
         group = newGroup
     }
 
+    /**
+     * ## 从集合中删除一个成员
+     */
     fun del(member: String) {
         if (!has(member)) {
             return

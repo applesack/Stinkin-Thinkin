@@ -8,7 +8,7 @@ import io.vertx.kotlin.coroutines.await
 import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
 import xyz.scootaloo.thinking.server.dav.service.FileService
-import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem
+import xyz.scootaloo.thinking.server.dav.service.fs.VirtualFileSystem
 import java.nio.file.NotDirectoryException
 
 /**

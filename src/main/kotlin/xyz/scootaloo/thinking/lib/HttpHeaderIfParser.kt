@@ -67,6 +67,9 @@ private val invalidIfExpr = IfExpression()
 
 @Version("1")
 fun HttpHeader.parseIfAsJson(text: String): Pair<Boolean, JsonObject> {
+    if (text.isBlank())
+        return false to INVALID_JSON
+
     val stack = Stack<Pair<Char, Int>>()
     val conditions = mutableListOf<List<JsonObject>>()
     val condItems = mutableListOf<JsonObject>()

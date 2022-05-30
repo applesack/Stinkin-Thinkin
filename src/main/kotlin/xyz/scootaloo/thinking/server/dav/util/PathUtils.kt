@@ -41,6 +41,10 @@ object PathUtils : HttpHeaderHelper {
             else
                 buff.append(ch)
         }
+        if (buff.length > 1 && buff.last() == '/') {
+            buff.setLength(buff.length - 1)
+        }
+
         return buff.toString()
     }
 

@@ -10,16 +10,18 @@ import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import org.dom4j.Document
+import org.junit.jupiter.api.Test
 import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.lib.HttpHeaderHelper
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
 import xyz.scootaloo.thinking.server.dav.domain.core.AFile
 import xyz.scootaloo.thinking.server.dav.domain.core.Directory
 import xyz.scootaloo.thinking.server.dav.domain.core.RegularFile
+import xyz.scootaloo.thinking.server.dav.domain.core.State
 import xyz.scootaloo.thinking.server.dav.service.DAVLockService
 import xyz.scootaloo.thinking.server.dav.service.DAVPropFindService
-import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem
-import xyz.scootaloo.thinking.server.dav.util.DAVLabels
+import xyz.scootaloo.thinking.server.dav.service.impl.util.MultiStatus
+import xyz.scootaloo.thinking.server.dav.service.fs.VirtualFileSystem
 import xyz.scootaloo.thinking.server.dav.util.JsonToXml
 import xyz.scootaloo.thinking.server.dav.util.XmlHelper
 import xyz.scootaloo.thinking.struct.http.Depth
@@ -82,25 +84,40 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
 
         private fun JsonObject.resolveDefault(ctx: RoutingContext): JsonObject {
             this[Constant.SUBJECT] = Convert.decodeUriComponent(ctx.pathParam("*") ?: "/")
-            this[DAVLabels.depth] = ctx.request().headers()[DAVLabels.depth]
-            this[DAVLabels.allProp] = true
+            this[Headers.depth] = ctx.request().headers()[Headers.depth]
+            this[Labels.allProp] = true
             return this
         }
 
         private fun JsonObject.resolveXmlBody(document: Document): JsonObject {
             val root = document.rootElement
-            val props = root.first(DAVLabels.prop)
-            this[DAVLabels.allProp] = root.hasChild(DAVLabels.allProp)
+            val props = root.first(Labels.prop)
+            this[Labels.allProp] = root.hasChild(Labels.allProp)
             props.ifNotNull {
                 val propArray = JsonArray()
                 it.collectChildTags().forEach(propArray::add)
                 if (!propArray.isEmpty) {
-                    this[DAVLabels.allProp] = null
-                    this[DAVLabels.props] = propArray
+                    this[Labels.allProp] = null
+                    this[Labels.props] = propArray
                 }
             }
             return this
         }
+    }
+
+    private object Labels {
+        const val href = "href"
+        const val multiStatus = "multiStatus"
+        const val prop = "prop"
+        const val status = "status"
+        const val allProp = "allProp"
+        const val props = "props"
+        const val propStat = "propStat"
+        const val response = "response"
+    }
+
+    private object Headers {
+        const val depth = "Depth"
     }
 
     private object PropFind : EventbusMessageHelper, HttpHeaderHelper {
@@ -119,30 +136,34 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
          */
         suspend fun handle(request: Message<JsonObject>, fs: FileSystem) {
             val param = buildParam(request.body())
-            val (exists, files) = VirtualFileSystem.viewFiles(
+            val files = VirtualFileSystem.viewFiles(
                 param.subject, param.depth.depth, param.depth.noRoot, fs
             )
 
-            if (!exists) {
+            if (files.isEmpty()) {
                 return buildHtmlMessage {
                     it.state = Status.notFound
                     it.data = ResponseStore.fileNotFount
                 }.reply(request)
             }
 
-            buildXmlMessage(DAVLabels.multiStatus) scope@{
+            buildXmlMessage(Labels.multiStatus) scope@{
                 val json = JsonObject()
                 if (files.isEmpty()) {
                     return@scope
                 }
 
                 val multiResponse = JsonArray()
-                for (file in files) {
-                    multiResponse.add(buildResponse(param, file))
+                for ((state, file) in files) {
+                    if (state == State.PASS) {
+                        multiResponse.add(buildResponse(param, file))
+                    } else {
+                        TODO()
+                    }
                 }
 
                 if (!multiResponse.isEmpty) {
-                    json[DAVLabels.response] = multiResponse
+                    json[Labels.response] = multiResponse
                 }
 
                 it.state = Status.multiStatus
@@ -152,10 +173,10 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
 
         private fun buildResponse(param: Param, file: AFile): JsonObject {
             return Json.obj {
-                this[DAVLabels.href] = Convert.encodeUriComponent(file.href)
-                this[DAVLabels.propStat] = Json.obj {
-                    this[DAVLabels.prop] = buildProp(param, file)
-                    this[DAVLabels.status] = buildStatus()
+                this[Labels.href] = Convert.encodeUriComponent(file.href)
+                this[Labels.propStat] = Json.obj {
+                    this[Labels.prop] = buildProp(param, file)
+                    this[Labels.status] = MultiStatus.statusOf(Status.ok)
                 }
             }
         }
@@ -216,18 +237,12 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
             return root
         }
 
-        private const val defStatus = "HTTP/1.1 200 OK"
-
-        private fun buildStatus(): String {
-            return defStatus
-        }
-
-        private fun buildParam(body: JsonObject): Param {
+        private fun buildParam(form: JsonObject): Param {
             return Param(
-                subject = body[Constant.SUBJECT],
-                depth = parseDepthHeader(body[DAVLabels.depth] ?: "infinity"),
-                allProp = DAVLabels.allProp in body,
-                props = wrapInSet(body.getJsonArray(DAVLabels.props))
+                subject = form[Constant.SUBJECT],
+                depth = parseDepthHeader(form[Headers.depth] ?: "infinity"),
+                allProp = Labels.allProp in form,
+                props = wrapInSet(form.getJsonArray(Labels.props))
             )
         }
 
@@ -242,6 +257,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
     }
 
     private object Status {
+        const val ok = 200
         const val notFound = 404
         const val multiStatus = 207
     }
@@ -250,7 +266,48 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
         val subject: String,
         val depth: Depth,
         val allProp: Boolean,
-        val props: Set<String>?
+        val props: Set<String>?,
     )
+
+}
+
+private class PropFindUnitTest : TestDsl {
+
+    @Test
+    fun testXmlConvert() {
+        val json = """
+        {
+            "response": [{
+                "href": "/container/",
+                "propStat": [{
+                    "prop": {
+                        "bigBox": {
+                            "boxType": "Box Type A"
+                        },
+                        "author": {
+                            "name": "Hadrian"
+                        },
+                        "creationDate": {
+                            "-ns0:dt": "dateTime.rfc1123",
+                            "#text": "1997-12-01T17:42:21-08:00"
+                        },
+                        "displayName": "Example collection",
+                        "resourceType": {}
+                    },
+                    "status": "HTTP/1.1 200 OK"
+                },
+                {
+                    "prop": {
+                         "DingALing": {},
+                         "Random": {}
+                     },
+                     "responseDescription": "The user does not have access to the DingALing property."
+                }]
+            }],
+            "responseDescription": "There has been an access violation error."
+        }
+        """.trimIndent()
+        JsonToXml.convert(JsonObject(json), "propFind").log()
+    }
 
 }

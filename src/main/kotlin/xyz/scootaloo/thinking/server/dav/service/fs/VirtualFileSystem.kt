@@ -1,20 +1,13 @@
-package xyz.scootaloo.thinking.server.dav.service.internal
+package xyz.scootaloo.thinking.server.dav.service.fs
 
 import io.vertx.core.file.FileSystem
-import io.vertx.ext.web.impl.LRUCache
 import io.vertx.kotlin.coroutines.await
-import kotlinx.coroutines.coroutineScope
 import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
-import xyz.scootaloo.thinking.server.dav.domain.core.AFile
-import xyz.scootaloo.thinking.server.dav.domain.core.File
-import xyz.scootaloo.thinking.server.dav.domain.dao.FileDAO
-import xyz.scootaloo.thinking.server.dav.domain.dao.UserDAO
+import xyz.scootaloo.thinking.server.dav.domain.core.*
+import xyz.scootaloo.thinking.server.dav.domain.core.State
 import xyz.scootaloo.thinking.server.dav.service.FileService
-import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem.FileCache.getGroup
-import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem.FileCache.getSingle
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
-import xyz.scootaloo.thinking.server.dav.util.SentryNode
 import java.util.*
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -31,6 +24,10 @@ object VirtualFileSystem : VertxUtils {
 
     val basePath = Path("./home").normalize().absolutePathString()
 
+    fun refresh(basePath: String, fs: FileSystem) {
+        TODO()
+    }
+
     /**
      * 搜索范围内的文件信息
      *
@@ -42,35 +39,42 @@ object VirtualFileSystem : VertxUtils {
      */
     suspend fun viewFiles(
         path: String, depth: Int, noRoot: Boolean, fs: FileSystem,
-    ): Pair<Boolean, List<AFile>> {
+    ): List<Pair<State, AFile>> {
         val fullPath = Path(basePath, path).absolutePathString()
         val exists = fs.exists(fullPath).await()
         if (!exists) {
-            return false to emptyList()
+            return emptyList()
         }
 
         if (!Viewer.guessFileExists(path)) {
-            return false to emptyList()
+            return emptyList()
         }
 
-        val result = LinkedList<AFile>()
-        val current = FileCache.handle(Helper.solveFile(fullPath, fs)) ?: return false to emptyList()
-        result.add(current)
-
-        if (depth == 1 && Viewer.hasDirectory(current.href)) {
-            val children = fs.readDir(fullPath).await()
-            for (childFullPath in children) {
-                FileCache.handle(Helper.solveFile(childFullPath, fs)).ifNotNull {
-                    result.add(it)
-                }
-            }
+        val result = LinkedList<Pair<State, AFile>>()
+        if (depth == 0) {
+//            result.add(FileCache.getSingle(fullPath, fs))
+            TODO()
+//            return
         }
+        FileCache.getSingle(fullPath, fs)
+//        val current = FileCache.handle(Helper.solveFile(fullPath, fs)) ?: return false to emptyList()
+//        result.add(current)
 
-        if (noRoot && result.isNotEmpty()) {
-            result.removeFirst()
-        }
+//        if (depth == 1 && Viewer.hasDirectory(current.href)) {
+//            val children = fs.readDir(fullPath).await()
+//            for (childFullPath in children) {
+//                FileCache.handle(Helper.solveFile(childFullPath, fs)).ifNotNull {
+//                    result.add(it)
+//                }
+//            }
+//        }
 
-        return true to result
+//        if (noRoot && result.isNotEmpty()) {
+//            result.removeFirst()
+//        }
+
+//        return true to result
+        TODO()
     }
 
     fun isDirectoryExists(path: String): Boolean {
@@ -112,6 +116,7 @@ object VirtualFileSystem : VertxUtils {
         }
     }
 
+    @Stateless
     fun fullPath(file: String): String {
         return Helper.fullPath(file)
     }
@@ -189,130 +194,50 @@ object VirtualFileSystem : VertxUtils {
         }
     }
 
-    /**
-     * 文件缓存:
-     *
-     * 缓存最常浏览的文件的信息, 避免频繁访问文件系统;
-     *
-     * 获取单个文件 [getSingle]
-     * 获取一组文件 [getGroup]
-     *
-     * -----------------------------------------
-     * 缓存运行机制:
-     *
-     *
-     */
-    private object FileCache {
-        private val cache = LRUCache<String, AFile>(512)
-
-        suspend fun getSingle(path: String): AFile? {
-            TODO()
-        }
-
-        suspend fun getGroup(path: String): List<AFile> {
-            TODO()
-        }
-
-        fun getFile(path: String): AFile? {
-            return cache[path]
-        }
-
-        // hit, relative, file
-        fun handle(tripe: Triple<Boolean, String, AFile?>): AFile? {
-            val file = tripe.third
-            if (!tripe.first && file != null) {
-                putFile(tripe.second, file)
-            }
-            return file
-        }
-
-        private fun putFile(path: String, file: AFile) {
-            cache[path] = file
-        }
-    }
-
-    private object Helper {
-        fun pathSplit(path: String, sep: Char): List<String> {
-            val buff = StringBuilder()
-            val res = ArrayList<String>(4)
-            for (ch in path) {
-                if (ch == sep || ch == '\\') {
-                    if (buff.isNotBlank()) {
-                        res.add(buff.toString())
-                        buff.clear()
-                    }
+    private object Interceptor {
+        // 探针
+        fun putSign(path: String, sign: FileLock): State {
+            val pathItems = Helper.pathSplit(path)
+            var current = root
+            for (idx in pathItems.indices) {
+                val item = pathItems[idx]
+                if (current.hasChild(item)) {
+                    current = current.getChild()
                 } else {
-                    buff.append(ch)
-                }
-            }
-            if (buff.isNotBlank())
-                res.add(buff.toString())
-            return res
-        }
-
-        suspend fun scanDirectories(basePath: String, fs: FileSystem): Triple<Int, Int, List<String>> {
-            var dirCount = 0
-            var fileCount = 0
-            val deque = LinkedList<String>()
-            val result = LinkedList<String>()
-            deque.addLast(basePath)
-            while (deque.isNotEmpty()) {
-                val file = deque.removeFirst()
-                val exists = fs.exists(file).await()
-                if (exists) {
-                    val props = fs.props(file).await()
-                    if (props.isDirectory) {
-                        dirCount++
-                        result.addLast(file)
-                        val children = fs.readDir(file).await()
-                        for (child in children) {
-                            deque.addLast(child)
-                        }
+                    if (idx == pathItems.lastIndex) {
+                        val selected = pathItems.last()
                     } else {
-                        fileCount++
+                        return State.UNMAPPING
                     }
                 }
             }
-            return Triple(dirCount, fileCount, result)
+            TODO()
         }
 
-        suspend fun solveFile(fullPath: String, fs: FileSystem): Triple<Boolean, String, AFile?> {
-            val relative = PathUtils.extractRelativePath(fullPath, basePath)
-            val exists = FileCache.getFile(relative)
-            if (exists != null)
-                return Triple(true, relative, exists)
-
-            return Triple(false, relative, asyncFindFile(fullPath, relative, fs))
+        fun detect(path: String): StateValueHolder<State, SentryNode> {
+//            return StateValueHolder
+            TODO()
         }
 
-        fun fullPath(relativePath: String): String {
-            return Path(basePath, relativePath).absolutePathString()
-        }
-
-        fun parentPath(path: String): String {
-            val idx = path.lastIndexOf('/')
-            if (idx < 0)
-                return "/"
-            return path.substring(0, idx)
-        }
-
-        private suspend fun asyncFindFile(fullPath: String, path: String, fs: FileSystem): AFile? {
-            return coroutineScope scope@{
-                val exists = fs.exists(fullPath).await()
-                if (!exists)
-                    return@scope null
-
-                val props = fs.props(fullPath).await()
-                val author = asyncFindAuthor(path)
-
-                File.build(fullPath, basePath, author, props)
+        fun detect(node: SentryNode, subject: String, pass: Pass?): Boolean {
+            val mark = node.getRecord(subject) ?: return true
+            val lock = mark.lock
+            if (lock == UnreachableFileLock) {
+                return true
+            } else {
+                if (pass == null) {
+                    return false
+                }
+                return pass.token == lock.token
             }
         }
 
-        private suspend fun asyncFindAuthor(path: String): String {
-            val file = awaitParallelBlocking { FileDAO.findRecord(path) } ?: return Constant.UNKNOWN
-            val user = awaitParallelBlocking { UserDAO.findById(file.author) } ?: return Constant.UNKNOWN
-            return user.username
+        private fun extractLock(node: SentryNode, subject: String): FileLock {
+            return node.getRecord(subject)?.lock ?: return UnreachableFileLock
+        }
+
+        private fun putSign(node: SentryNode, subject: String, sign: FileLock): State {
+            TODO()
         }
     }
 

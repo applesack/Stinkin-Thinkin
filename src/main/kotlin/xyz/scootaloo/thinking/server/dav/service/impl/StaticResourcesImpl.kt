@@ -13,7 +13,7 @@ import xyz.scootaloo.thinking.lang.ifNull
 import xyz.scootaloo.thinking.lib.HttpHeaderHelper
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
 import xyz.scootaloo.thinking.server.dav.service.StaticResourcesService
-import xyz.scootaloo.thinking.server.dav.service.internal.VirtualFileSystem
+import xyz.scootaloo.thinking.server.dav.service.fs.VirtualFileSystem
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
 import xyz.scootaloo.thinking.struct.http.Range
 import xyz.scootaloo.thinking.util.Convert

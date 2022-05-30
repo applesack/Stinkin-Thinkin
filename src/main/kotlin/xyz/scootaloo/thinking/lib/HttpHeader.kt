@@ -3,10 +3,7 @@ package xyz.scootaloo.thinking.lib
 import io.vertx.core.file.FileProps
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.http.impl.MimeMapping
-import xyz.scootaloo.thinking.struct.http.Depth
-import xyz.scootaloo.thinking.struct.http.ETag
-import xyz.scootaloo.thinking.struct.http.IfExpression
-import xyz.scootaloo.thinking.struct.http.Range
+import xyz.scootaloo.thinking.struct.http.*
 
 /**
  * @author flutterdash@qq.com
@@ -20,7 +17,7 @@ interface HttpHeaderHelper {
 
     fun parseIfHeader(text: String): Pair<Boolean, IfExpression> = HttpHeader.parseIf(text)
     fun parseETagHeader(text: String): Pair<Boolean, ETag> = HttpHeader.parseETag(text)
-    fun parseTimeoutHeader(text: String): Pair<Boolean, Int> = HttpHeader.parseTimeout(text)
+    fun parseTimeoutHeader(text: String): Pair<Boolean, Timeout> = HttpHeader.parseTimeout(text)
     fun parseDepthHeader(text: String): Depth = HttpHeader.parseDepth(text)
     fun parseRangeHeader(request: Request, props: FileProps): Pair<Boolean, Range> =
         HttpHeader.parseRange(request, props)

@@ -36,17 +36,17 @@ object ConditionJsonStruct {
     const val cid = "id"
 }
 
-abstract class ConditionItem(val cid: Int)
+abstract class ConditionItem
 
 class TokenCondition(
     val not: Boolean,
     val token: String
-) : ConditionItem(0)
+) : ConditionItem()
 
 class ETagCondition(
     val not: Boolean,
     val etag: ETag
-) : ConditionItem(1)
+) : ConditionItem()
 
 object ETagJsonStruct {
     const val weak = "weak"
@@ -79,4 +79,9 @@ class Depth(
 class Range(
     val offset: Long,
     val end: Long
+)
+
+class Timeout(
+    val amount: Int,
+    val infinite: Boolean
 )

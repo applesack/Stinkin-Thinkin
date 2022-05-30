@@ -11,6 +11,7 @@ object Constant {
     const val HOST = "host"
     const val OK = "ok"
 
+    const val BODY = "body"
     const val UNKNOWN = "unknown"
 
     const val ID = "id"

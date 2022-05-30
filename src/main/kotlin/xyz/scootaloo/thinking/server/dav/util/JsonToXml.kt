@@ -128,43 +128,6 @@ object JsonToXml {
 private class JsonToXmlTest : TestDsl {
 
     @Test
-    fun test0() {
-        val json = """
-        {
-            "response": [{
-                "href": "/container/",
-                "propStat": [{
-                    "prop": {
-                        "bigBox": {
-                            "boxType": "Box Type A"
-                        },
-                        "author": {
-                            "name": "Hadrian"
-                        },
-                        "creationDate": {
-                            "-ns0:dt": "dateTime.rfc1123",
-                            "#text": "1997-12-01T17:42:21-08:00"
-                        },
-                        "displayName": "Example collection",
-                        "resourceType": {}
-                    },
-                    "status": "HTTP/1.1 200 OK"
-                },
-                {
-                    "prop": {
-                         "DingALing": {},
-                         "Random": {}
-                     },
-                     "responseDescription": "The user does not have access to the DingALing property."
-                }]
-            }],
-            "responseDescription": "There has been an access violation error."
-        }
-        """.trimIndent()
-        JsonToXml.convert(JsonObject(json), "propFind").log()
-    }
-
-    @Test
     fun testPropName() {
 
     }

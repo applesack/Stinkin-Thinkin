@@ -83,3 +83,27 @@ class AFileAdapter(
 class RegularFile(adapter: AFileAdapter, val size: Long) : AFile by adapter
 
 class Directory(adapter: AFileAdapter, override var type: String = "collection") : AFile by adapter
+
+object UnreachableFile : AFile {
+    override val href: String
+        get() = throw java.lang.IllegalStateException()
+    override val displayName: String
+        get() = throw java.lang.IllegalStateException()
+    override val author: String
+        get() = throw java.lang.IllegalStateException()
+    override var type: String
+        get() = throw java.lang.IllegalStateException()
+        set(value) {
+            throw java.lang.IllegalStateException(value)
+        }
+    override var creationDate: Long
+        get() = throw java.lang.IllegalStateException()
+        set(value) {
+            throw java.lang.IllegalStateException("$value")
+        }
+    override var lastModified: Long
+        get() = throw java.lang.IllegalStateException()
+        set(value) {
+            throw java.lang.IllegalStateException("$value")
+        }
+}

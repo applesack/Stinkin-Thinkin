@@ -1,5 +1,6 @@
 package xyz.scootaloo.thinking.lang
 
+import org.junit.jupiter.api.Test
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -33,6 +34,14 @@ inline fun <T : Any> T?.ifNotNull(block: (T) -> Unit): T? {
         block(this)
     }
     return this
+}
+
+fun <T : Any> Pair<Boolean, T>.getOfNull(): T? {
+    return if (first) second else null
+}
+
+fun <T : Any> Pair<Boolean, T>.getOrElse(def: T): T {
+    return if (first) second else def
 }
 
 inline fun <T : Any> T?.ifNull(block: () -> Unit) {
@@ -101,5 +110,27 @@ abstract class StateHolder<S, T> {
 
     abstract var state: S
     abstract var data: T?
+
+}
+
+data class StateValueHolder<S, T>(
+    val state: S,
+    val holder: ValueHolder<T>,
+) {
+    companion object {
+        fun <S, T> empty(state: S): StateValueHolder<S, T> {
+            return StateValueHolder(state, ValueHolder.empty())
+        }
+    }
+}
+
+private class StandardUnitTest : TestDsl {
+
+    @Test
+    fun testValueHolder() {
+        StateValueHolder<Int, String>(
+            0, ValueHolder.empty()
+        )
+    }
 
 }

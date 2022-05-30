@@ -93,7 +93,7 @@ object CacheServiceImpl : SingletonVertxService(), CacheService {
     private object AutoGCCacheCrontab : VertxCrontabAdapter() {
         override val id = "cache-service-auto-gc"
         override fun run(currentTimeMillis: Long) {
-            CacheManager.gc(currentTimeMillis)
+            CacheManager.recycle(currentTimeMillis)
         }
     }
 
