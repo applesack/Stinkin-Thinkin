@@ -11,7 +11,7 @@ import xyz.scootaloo.thinking.util.AbstractTimeoutRecycler
  * @since 2022/5/13 20:18
  */
 @Context("state")
-object CacheManager : VertxUtils, AbstractTimeoutRecycler<String, Any>() {
+object CacheManager : AbstractTimeoutRecycler<String, Any>(), VertxUtils {
     private val log = getLogger("cache")
 
     @Suppress("UNCHECKED_CAST")

@@ -13,14 +13,13 @@ import org.dom4j.Element
 import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.lib.HttpHeaderHelper
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
-import xyz.scootaloo.thinking.server.dav.domain.core.FileLockScope
-import xyz.scootaloo.thinking.server.dav.domain.core.LockInfo
+import xyz.scootaloo.thinking.server.dav.domain.core.*
 import xyz.scootaloo.thinking.server.dav.service.DAVLockService
+import xyz.scootaloo.thinking.server.dav.service.DetectorService
 import xyz.scootaloo.thinking.server.dav.util.JsonToXml
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
 import xyz.scootaloo.thinking.server.dav.util.XmlHelper
 import xyz.scootaloo.thinking.struct.http.Depth
-import xyz.scootaloo.thinking.struct.http.IfExpression
 import xyz.scootaloo.thinking.struct.http.Timeout
 import xyz.scootaloo.thinking.util.Convert
 
@@ -59,6 +58,11 @@ object LockImpl : SingletonVertxService(), DAVLockService, EventbusMessageHelper
         const val exclusive = "Exclusive"
         const val owner = "Owner"
         const val href = "Href"
+        const val lockDiscovery = "LockDiscovery"
+        const val lockToken = "LockToken"
+        const val lockRoot = "LockRoot"
+        const val activeLock = "ActiveLock"
+        const val prop = "Prop"
     }
 
     private object InternalProtocol {
@@ -70,6 +74,7 @@ object LockImpl : SingletonVertxService(), DAVLockService, EventbusMessageHelper
         const val depth = "Depth"
         const val timeout = "Timeout"
         const val ifExpr = "If"
+        const val lockToken = "Lock-Token"
     }
 
     private val supported = Json.obj {
@@ -114,35 +119,28 @@ object LockImpl : SingletonVertxService(), DAVLockService, EventbusMessageHelper
          */
         suspend fun solveRequest(ctx: RoutingContext): JsonObject? {
             val result = JsonObject()
-            solveRequestHeader(result, ctx.request()) ?: return null
-            val xmlBody = ctx.body()?.asString() ?: return null
-            val (state, body) = awaitParallelBlocking {
+            result[Constant.SUBJECT] = ctx.pathParam("*") ?: return null
+            solveRequestHeader(result, ctx.request())
+            val xmlBody = ctx.body()?.asString() ?: return result
+            val (valid, body) = awaitParallelBlocking {
                 solveRequestBody(xmlBody)
             }
-            if (state < 0) {
-                return null
-            } else {
+            if (valid) {
                 result[Constant.BODY] = body
             }
             return result
         }
 
-        private const val symbol = 1
-
-        private fun solveRequestHeader(receiver: JsonObject, request: HttpServerRequest): Int? {
+        private fun solveRequestHeader(receiver: JsonObject, request: HttpServerRequest) {
             val headers = request.headers()
             receiver[Headers.ifExpr] = headers[Headers.ifExpr]
             receiver[Headers.timeout] = headers[Headers.timeout]
             receiver[Headers.depth] = headers[Headers.depth]
-
-            if (!(Headers.depth in receiver && receiver.getString(Headers.depth) != null))
-                return null
-            return symbol
         }
 
-        private fun solveRequestBody(xml: String): Pair<Int, JsonObject?> {
+        private fun solveRequestBody(xml: String): Pair<Boolean, JsonObject> {
             val body = JsonObject()
-            val document = safeParseXml(log, xml) ?: return 0 to null
+            val document = safeParseXml(log, xml) ?: return false to INVALID_JSON
             val root = document.rootElement
             root.first(Term.lockScope).ifNotNull {
                 body[Term.lockScope] = solveLockScope(it)
@@ -151,10 +149,10 @@ object LockImpl : SingletonVertxService(), DAVLockService, EventbusMessageHelper
                 body[Term.lockType] = solveLockType(it)
             }
             root.first(Term.owner).ifNotNull {
-                body[Term.owner] = solveOwner(it)
-                return@solveRequestBody -1 to null
+                val owner = solveOwner(it) ?: return@solveRequestBody false to INVALID_JSON
+                body[Term.owner] = owner
             }
-            return 0 to body
+            return true to body
         }
 
         private fun solveLockScope(lockScope: Element): String? {
@@ -171,47 +169,125 @@ object LockImpl : SingletonVertxService(), DAVLockService, EventbusMessageHelper
 
         private fun solveOwner(ownerLabel: Element): String? {
             ownerLabel.first(Term.href).ifNotNull {
-                return@solveOwner it.name
+                return@solveOwner it.textTrim
             }
             return null
         }
     }
 
     private object Lock : EventbusMessageHelper, HttpHeaderHelper {
-        fun handle(request: Message<JsonObject>) {
+        private val detector = DetectorService()
+
+        suspend fun handle(request: Message<JsonObject>) {
             val param = buildParam(request.body())
-            if (param.ifExpr != null) {
-                tryUnlock(request, param)
+            if (param.lockInfo != null) {
+                val (state, lock) = detector.tryLock(
+                    param.subject, param.lockInfo, param.pass, fs
+                )
+                when (state) {
+                    State.REFUSE -> {
+                        makeUnCreatedResponse(request, Status.conflict)
+                    }
+                    State.INCOMPATIBLE -> {
+                        makeUnCreatedResponse(request, Status.locked)
+                    }
+                    State.UNMAPPING -> {
+                        makeLockSuccessResponse(request, param.subject, lock, Status.created)
+                    }
+                    else -> {
+                        // 写入 lockDiscovery 信息, 状态码200
+                        makeLockSuccessResponse(request, param.subject, lock, Status.ok)
+                    }
+                }
             } else {
-                tryLock(request, param)
+                val notNullPass = param.pass ?: return buildRawMessage {
+                    it.state = Status.bedRequest
+                }.reply(request)
+                val (state, lock) = detector.refreshLock(
+                    param.subject, param.timeout.amount.toLong(), notNullPass
+                )
+                if (state == State.PASS) {
+                    makeLockSuccessResponse(
+                        request, param.subject, lock, Status.ok
+                    )
+                } else {
+                    makeUnCreatedResponse(request, Status.preconditionFailed)
+                }
             }
         }
 
-        private fun tryUnlock(request: Message<JsonObject>, param: Param) {
-            TODO()
+        private fun makeUnCreatedResponse(request: Message<JsonObject>, code: Int) {
+            buildRawMessage {
+                it.state = code
+            }.reply(request)
         }
 
-        private fun tryLock(request: Message<JsonObject>, param: Param) {
-            TODO()
+        private fun makeLockSuccessResponse(
+            request: Message<JsonObject>, subject: String, lock: FileLock, code: Int,
+        ) {
+            val activeLock = Json.obj {
+                this[Term.lockType] = JsonToXml.closedTag(Term.writeLock)
+                this[Term.lockScope] = JsonToXml.closedTag(lock.scope.name)
+
+                val depth = if (lock.infinity) "infinity" else "0"
+                this[Headers.depth] = JsonToXml.textTag(depth)
+
+                this[Term.owner] = if (lock is SharedFileLock) {
+                    Json.array {
+                        for (owner in lock.owners) {
+                            add(Json.obj {
+                                this[Term.href] = owner
+                            })
+                        }
+                    }
+                } else {
+                    lock as ExclusiveFileLock
+                    Json.obj {
+                        this[Term.href] = lock.owner
+                    }
+                }
+
+                this[Headers.timeout] = lock.timeout.display()
+                this[Term.lockToken] = Json.obj {
+                    this[Term.href] = lock.token
+                }
+
+                this[Term.lockRoot] = Json.obj {
+                    this[Term.href] = Convert.decodeUriComponent(subject)
+                }
+            }
+
+            val lockDiscovery = Json.obj {
+                this[Term.lockDiscovery] = Json.obj {
+                    this[Term.activeLock] = activeLock
+                }
+            }
+
+            buildXmlMessage(Term.prop) {
+                it.state = code
+                it.body = lockDiscovery
+                it.putHeader(Headers.lockToken, lock.token)
+            }.reply(request)
         }
 
         private fun buildParam(form: JsonObject): Param {
             val subject = PathUtils.normalize(
                 Convert.decodeUriComponent(form.getString(Constant.SUBJECT))
             )
-            val depth = parseDepthHeader(form[Headers.depth])
-            val timeout = parseTimeoutHeader(form[Headers.timeout] ?: "").getOfNull()
-            val ifExpr = parseIfHeader(form[Headers.ifExpr] ?: "").getOfNull()
+            val timeout = parseTimeout(form)
+            val depth = parseDepth(form)
+            val ifExpr = parseIfHeader(form[Headers.ifExpr] ?: "").getNullable()
+            val pass = ifExpr.transformIfNotNull { Pass(it) }
             val lockInfo = if (form.getJsonObject(Constant.BODY) != null) {
-                buildParamBody(subject, form[Constant.BODY])
+                buildLockInfo(form[Constant.BODY], timeout, depth)
             } else {
                 null
             }
 
-            return Param(subject, depth, timeout, ifExpr, lockInfo)
+            return Param(subject, pass, timeout, lockInfo)
         }
 
-        private fun buildParamBody(subject: String, form: JsonObject): LockInfo {
+        private fun buildLockInfo(form: JsonObject, timeout: Timeout, depth: Depth): LockInfo {
             val scopeInfo = form.getString(Term.lockScope)
             val scope = if (scopeInfo != null && scopeInfo like Term.shared) {
                 FileLockScope.SHARD
@@ -219,28 +295,30 @@ object LockImpl : SingletonVertxService(), DAVLockService, EventbusMessageHelper
                 FileLockScope.EXCLUSIVE
             }
             return LockInfo(
-                form.getString(Term.owner), scope,
-                parseTimeout(form.getString(Headers.timeout)),
-                parseDepth(form.getString(Headers.depth))
+                form.getString(Term.owner) ?: Constant.UNKNOWN, scope,
+                timeout, depth
             )
         }
 
-        private fun parseTimeout(timeout: String?): Timeout {
-            return parseTimeoutHeader(timeout ?: "").getOrElse(defTimeout())
+        private fun parseTimeout(form: JsonObject): Timeout {
+            val timeout = form.getString(Headers.timeout) ?: ""
+            val to = parseTimeoutHeader(timeout).getOrElse(defTimeout())
+            if (to.amount > max)
+                return Timeout(max, false)
+            else if (to.amount < min)
+                return defTimeout()
+            return to
         }
 
-        private fun parseDepth(depth: String?): Depth {
-            return parseDepthHeader(depth ?: "")
+        private fun parseDepth(form: JsonObject): Depth {
+            val depth = form.getString(Headers.depth) ?: "0"
+            return parseDepthHeader(depth)
         }
 
-        private const val min = 30
+        private const val min = 5
         private const val max = 60 * 5
         private fun defTimeout(): Timeout {
             return Timeout(min, true)
-        }
-
-        private fun defDepth(): Depth {
-            return Depth(0, false)
         }
     }
 
@@ -250,15 +328,13 @@ object LockImpl : SingletonVertxService(), DAVLockService, EventbusMessageHelper
         const val bedRequest = 400
         const val conflict = 409
         const val preconditionFailed = 412
-        const val unprocessableEntity = 422
         const val locked = 423
     }
 
     private class Param(
         val subject: String,
-        val depth: Depth?,
-        val timeout: Timeout?,
-        val ifExpr: IfExpression?,
+        val pass: Pass?,
+        val timeout: Timeout,
         val lockInfo: LockInfo?,
     )
 

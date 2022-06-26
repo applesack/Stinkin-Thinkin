@@ -148,6 +148,6 @@ delete ------ todo
 put --------- todo
 copy -------- todo
 move -------- todo
-lock -------- todo
-unlock ------ todo
+lock -------- 完成
+unlock ------ 完成
 

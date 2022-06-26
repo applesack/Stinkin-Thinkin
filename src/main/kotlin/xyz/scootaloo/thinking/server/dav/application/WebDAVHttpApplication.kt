@@ -5,10 +5,7 @@ import xyz.scootaloo.thinking.lang.AuthMode
 import xyz.scootaloo.thinking.lang.CoroutineEntrance
 import xyz.scootaloo.thinking.lang.VertxHttpApplication
 import xyz.scootaloo.thinking.lang.getLogger
-import xyz.scootaloo.thinking.server.dav.service.DAVMkColService
-import xyz.scootaloo.thinking.server.dav.service.DAVPropFindService
-import xyz.scootaloo.thinking.server.dav.service.DAVPropPatchService
-import xyz.scootaloo.thinking.server.dav.service.StaticResourcesService
+import xyz.scootaloo.thinking.server.dav.service.*
 
 /**
  * @author flutterdash@qq.com
@@ -23,7 +20,10 @@ class WebDAVHttpApplication(entrance: CoroutineEntrance) : VertxHttpApplication(
     private val propFindService = DAVPropFindService()
     private val propPatchService = DAVPropPatchService()
     private val mkColService = DAVMkColService()
+    private val lockService = DAVLockService()
+    private val putService = DAVPutService()
     private val staticService = StaticResourcesService()
+    private val optionsService = DAVOptionsService()
 
     override fun config(router: Router) = with(router) {
         propFind {
@@ -45,6 +45,19 @@ class WebDAVHttpApplication(entrance: CoroutineEntrance) : VertxHttpApplication(
         head {
             staticService.handle(it)
         }
+
+        lock {
+            lockService.handle(it)
+        }
+
+        options {
+            optionsService.handle(it)
+        }
+
+        put {
+            putService.handle(it)
+        }
+
 //
 //        post {
 //

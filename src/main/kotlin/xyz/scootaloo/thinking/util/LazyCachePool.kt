@@ -7,10 +7,7 @@ import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
-import xyz.scootaloo.thinking.lang.TestDsl
-import xyz.scootaloo.thinking.lang.complete
-import xyz.scootaloo.thinking.lang.ifNotNull
-import xyz.scootaloo.thinking.lang.wrapInFut
+import xyz.scootaloo.thinking.lang.*
 import kotlin.random.Random
 import kotlin.system.measureTimeMillis
 
@@ -30,7 +27,7 @@ class LazyCachePool<K : Any, V : Any>(
 
     private val primary = CountableLRUCache<K, V>(config.run { maxSize percent factor }, config::valueCounter)
     private val secondary = LRUCache<K, Int>(config.run { maxSize percent (1 - factor) })
-    private val tasks = LazyAsyncTasks(vertx, config::calculate)
+    private val tasks = LazyAsyncTasks(vertx, config::blockingCalculate)
 
     fun get(item: K): Future<V?> {
         if (item in primary) {
@@ -78,7 +75,7 @@ class LazyCachePool<K : Any, V : Any>(
 
     private fun asyncGet(item: K): Future<V?> {
         return vertx.executeBlocking({
-            it complete config.calculate(item)
+            it complete config.blockingCalculate(item)
         }, false)
     }
 
@@ -93,14 +90,28 @@ class LazyCachePool<K : Any, V : Any>(
     }
 }
 
-interface LazyCachePoolConfig<K, V> {
+interface LazyCachePoolConfig<K : Any, V : Any> {
     val maxSize: Int
     val level: Int
     val factor: Double get() = 0.75
 
+    /**
+     * ## 值的实际数量计数
+     *
+     * 为了减少内存占用, 使缓存中
+     */
     fun valueCounter(value: V): Int
 
-    fun calculate(key: K): V?
+    /**
+     * ## 计算任务
+     *
+     * 应为这个方法会在线程池中调用, 所以可以是阻塞的
+     */
+    fun blockingCalculate(key: K): V?
+
+    fun createCacheInstance(vertx: Vertx): LazyCachePool<K, V> {
+        return LazyCachePool(vertx, this)
+    }
 }
 
 private class LazyCachePoolUnitTest : TestDsl {
@@ -172,7 +183,7 @@ private class LazyCachePoolUnitTest : TestDsl {
         override val level = 1
         override val factor = 0.5
 
-        override fun calculate(key: Int): String {
+        override fun blockingCalculate(key: Int): String {
             display("async $key")
             Thread.sleep(3000)
             return randomString().apply {

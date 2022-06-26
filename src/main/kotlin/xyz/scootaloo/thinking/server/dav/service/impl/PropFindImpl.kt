@@ -1,7 +1,6 @@
 package xyz.scootaloo.thinking.server.dav.service.impl
 
 import io.vertx.core.eventbus.Message
-import io.vertx.core.file.FileSystem
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
@@ -14,15 +13,14 @@ import org.junit.jupiter.api.Test
 import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.lib.HttpHeaderHelper
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
-import xyz.scootaloo.thinking.server.dav.domain.core.AFile
-import xyz.scootaloo.thinking.server.dav.domain.core.Directory
-import xyz.scootaloo.thinking.server.dav.domain.core.RegularFile
-import xyz.scootaloo.thinking.server.dav.domain.core.State
+import xyz.scootaloo.thinking.server.dav.domain.core.*
 import xyz.scootaloo.thinking.server.dav.service.DAVLockService
 import xyz.scootaloo.thinking.server.dav.service.DAVPropFindService
+import xyz.scootaloo.thinking.server.dav.service.FileTreeService
+import xyz.scootaloo.thinking.server.dav.service.impl.util.DAVCommon
 import xyz.scootaloo.thinking.server.dav.service.impl.util.MultiStatus
-import xyz.scootaloo.thinking.server.dav.service.fs.VirtualFileSystem
 import xyz.scootaloo.thinking.server.dav.util.JsonToXml
+import xyz.scootaloo.thinking.server.dav.util.PathUtils
 import xyz.scootaloo.thinking.server.dav.util.XmlHelper
 import xyz.scootaloo.thinking.struct.http.Depth
 import xyz.scootaloo.thinking.struct.http.ResponseStore
@@ -47,7 +45,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
 
     override fun registerEventbusConsumer(contextName: String) {
         eb.coroutineConsumer<JsonObject>(InternalProtocol.propFind) {
-            PropFind.handle(it, fs)
+            PropFind.handle(it)
         }
 
         log.info("eventbus 'PropFind' service ready; current context: $contextName")
@@ -83,8 +81,10 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
         }
 
         private fun JsonObject.resolveDefault(ctx: RoutingContext): JsonObject {
+            val headers = ctx.request().headers()
             this[Constant.SUBJECT] = Convert.decodeUriComponent(ctx.pathParam("*") ?: "/")
-            this[Headers.depth] = ctx.request().headers()[Headers.depth]
+            this[Headers.depth] = headers[Headers.depth]
+            this[Headers.ifExpr] = headers[Headers.ifExpr]
             this[Labels.allProp] = true
             return this
         }
@@ -118,10 +118,11 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
 
     private object Headers {
         const val depth = "Depth"
+        const val ifExpr = "If"
     }
 
-    private object PropFind : EventbusMessageHelper, HttpHeaderHelper {
-
+    private object PropFind : EventbusMessageHelper, HttpHeaderHelper, DAVCommon {
+        private val fileTree = FileTreeService()
         private val lockService = DAVLockService()
 
         /**
@@ -134,16 +135,22 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
          * }
          * ```
          */
-        suspend fun handle(request: Message<JsonObject>, fs: FileSystem) {
+        suspend fun handle(request: Message<JsonObject>) {
             val param = buildParam(request.body())
-            val files = VirtualFileSystem.viewFiles(
-                param.subject, param.depth.depth, param.depth.noRoot, fs
-            )
+            val files = try {
+                fileTree.viewFiles(param.subject, param.depth, param.pass)
+            } catch (error: Throwable) {
+                log.error("en error when execute propfind", error)
+                buildRawMessage {
+                    it.state = Status.internalError
+                }.reply(request)
+                return
+            }
 
             if (files.isEmpty()) {
                 return buildHtmlMessage {
                     it.state = Status.notFound
-                    it.data = ResponseStore.fileNotFount
+                    it.body = ResponseStore.fileNotFount
                 }.reply(request)
             }
 
@@ -158,7 +165,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
                     if (state == State.PASS) {
                         multiResponse.add(buildResponse(param, file))
                     } else {
-                        TODO()
+                        multiResponse.add(buildNotAllowResponse(file.href, state))
                     }
                 }
 
@@ -167,7 +174,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
                 }
 
                 it.state = Status.multiStatus
-                it.data = json
+                it.body = json
             }.reply(request)
         }
 
@@ -177,6 +184,19 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
                 this[Labels.propStat] = Json.obj {
                     this[Labels.prop] = buildProp(param, file)
                     this[Labels.status] = MultiStatus.statusOf(Status.ok)
+                }
+            }
+        }
+
+        private fun buildNotAllowResponse(path: String, state: State): JsonObject {
+            return Json.obj {
+                this[Labels.href] = Convert.encodeUriComponent(path)
+                this[Labels.propStat] = Json.obj {
+                    if (state == State.UNMAPPING) {
+                        this[Labels.status] = MultiStatus.statusOf(Status.notFound)
+                    } else {
+                        this[Labels.status] = MultiStatus.statusOf(Status.forbidden)
+                    }
                 }
             }
         }
@@ -209,7 +229,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
             }
 
             if (param.allProp || contains(displayName, param.props)) {
-                root[displayName] = Convert.encodeUriComponent(file.displayName)
+                root[displayName] = file.displayName
             }
 
             if ((param.allProp || contains(contentLength, param.props)) && file is RegularFile) {
@@ -239,10 +259,13 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
 
         private fun buildParam(form: JsonObject): Param {
             return Param(
-                subject = form[Constant.SUBJECT],
+                subject = PathUtils.normalize(
+                    Convert.decodeUriComponent(form[Constant.SUBJECT])
+                ),
                 depth = parseDepthHeader(form[Headers.depth] ?: "infinity"),
                 allProp = Labels.allProp in form,
-                props = wrapInSet(form.getJsonArray(Labels.props))
+                props = wrapInSet(form.getJsonArray(Labels.props)),
+                buildPass(form[Headers.ifExpr])
             )
         }
 
@@ -258,8 +281,10 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
 
     private object Status {
         const val ok = 200
-        const val notFound = 404
         const val multiStatus = 207
+        const val forbidden = 403
+        const val notFound = 404
+        const val internalError = 500
     }
 
     private class Param(
@@ -267,6 +292,7 @@ object PropFindImpl : SingletonVertxService(), DAVPropFindService, EventbusMessa
         val depth: Depth,
         val allProp: Boolean,
         val props: Set<String>?,
+        val pass: Pass?,
     )
 
 }

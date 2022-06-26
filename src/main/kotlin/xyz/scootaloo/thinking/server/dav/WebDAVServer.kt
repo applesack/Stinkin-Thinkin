@@ -38,9 +38,16 @@ object WebDAVServer : VertxServer() {
             AccountService.factory(),
             DAVPropFindService.factory(),
             DAVLockService.factory(),
+            DAVUnlockService.factory(),
+            DAVDeleteService.factory(),
             DAVMkColService.factory(),
+            DAVPutService.factory(),
+            DAVOptionsService.factory(),
             StaticResourcesService.factory(),
-            FileService.factory()
+            FileCheckerService.factory(),
+            FileCacheService.factory(),
+            FileTreeService.factory(),
+            DetectorService.factory(),
         )
     }
 

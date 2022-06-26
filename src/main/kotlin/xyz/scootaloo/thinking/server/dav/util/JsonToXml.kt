@@ -61,6 +61,12 @@ import java.util.*
  */
 object JsonToXml {
 
+    fun closedTag(text: String): JsonObject {
+        return Json.obj {
+            this[text] = closedTag()
+        }
+    }
+
     fun closedTag() = JsonObject()
 
     fun textTag(text: String, vararg attrs: Pair<String, String>): JsonObject {

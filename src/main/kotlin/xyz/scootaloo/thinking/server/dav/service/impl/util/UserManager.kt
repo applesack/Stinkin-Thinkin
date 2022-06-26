@@ -1,4 +1,4 @@
-package xyz.scootaloo.thinking.server.dav.service.internal
+package xyz.scootaloo.thinking.server.dav.service.impl.util
 
 import io.vertx.ext.web.impl.LRUCache
 import xyz.scootaloo.thinking.lang.VertxUtils

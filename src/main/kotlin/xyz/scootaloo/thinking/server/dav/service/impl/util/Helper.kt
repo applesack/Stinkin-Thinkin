@@ -1,15 +1,9 @@
-package xyz.scootaloo.thinking.server.dav.service.fs
+package xyz.scootaloo.thinking.server.dav.service.impl.util
 
 import io.vertx.core.file.FileSystem
 import io.vertx.kotlin.coroutines.await
-import kotlinx.coroutines.coroutineScope
-import xyz.scootaloo.thinking.lang.Constant
-import xyz.scootaloo.thinking.lang.awaitParallelBlocking
-import xyz.scootaloo.thinking.server.dav.domain.core.AFile
-import xyz.scootaloo.thinking.server.dav.domain.core.File
-import xyz.scootaloo.thinking.server.dav.domain.core.State
-import xyz.scootaloo.thinking.server.dav.domain.dao.FileDAO
-import xyz.scootaloo.thinking.server.dav.domain.dao.UserDAO
+import xyz.scootaloo.thinking.server.dav.domain.core.SentryNode
+import xyz.scootaloo.thinking.server.dav.service.FileTreeService
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
 import java.util.*
 import kotlin.io.path.Path
@@ -20,9 +14,16 @@ import kotlin.io.path.absolutePathString
  * @since 2022/5/27 12:19
  */
 object Helper {
+
+    private val fileTree by lazy { FileTreeService() }
+
+    fun relative(fullPath: String): String {
+        return PathUtils.extractRelativePath(fullPath, fileTree.basePath())
+    }
+
     fun pathSplit(path: String, sep: Char = '/'): List<String> {
         val buff = StringBuilder()
-        val res = ArrayList<String>(4)
+        val res = LinkedList<String>()
         for (ch in path) {
             if (ch == sep || ch == '\\') {
                 if (buff.isNotBlank()) {
@@ -64,14 +65,35 @@ object Helper {
         return Triple(dirCount, fileCount, result)
     }
 
-    suspend fun solveFile(fullPath: String, fs: FileSystem): Triple<State, String, AFile?> {
-        val relative = PathUtils.extractRelativePath(fullPath, VirtualFileSystem.basePath)
-        val (state, result) = FileCache.getSingle(relative, fs)
-        return Triple(state, relative, result())
+    fun fullPath(relativePath: String): String {
+        val basePath = fileTree.basePath()
+        if (relativePath.startsWith(basePath)) {
+            return relativePath
+        }
+        return Path(fileTree.basePath(), relativePath).absolutePathString()
     }
 
-    fun fullPath(relativePath: String): String {
-        return Path(FileTree.basePath(), relativePath).absolutePathString()
+    fun partPath(path: String): Pair<String, String> {
+        val closetDir = closestDirPath(path)
+        return if (closetDir == path) {
+            closetDir to ""
+        } else {
+            val file = path.substring(closetDir.length)
+            closetDir to file
+        }
+    }
+
+    fun closestDirPath(path: String): String {
+        val node = fileTree.searchDirNode(path)
+        return node.fullPath()
+    }
+
+    fun closetSuperiorDirPath(path: String): String {
+        if (fileTree.hasDirectory(path)) {
+            val dirNode = fileTree.searchDirNode(path)
+            return dirNode.parent().fullPath()
+        }
+        return closestDirPath(path)
     }
 
     fun parentPath(path: String): String {
@@ -81,22 +103,9 @@ object Helper {
         return path.substring(0, idx)
     }
 
-    private suspend fun asyncFindFile(fullPath: String, path: String, fs: FileSystem): AFile? {
-        return coroutineScope scope@{
-            val exists = fs.exists(fullPath).await()
-            if (!exists)
-                return@scope null
-
-            val props = fs.props(fullPath).await()
-            val author = asyncFindAuthor(path)
-
-            File.build(fullPath, VirtualFileSystem.basePath, author, props)
-        }
+    fun buildPath(node: SentryNode, filename: String): String {
+        return if (filename.isEmpty()) node.fullPath()
+        else "${node.fullPath()}/$filename"
     }
 
-    private suspend fun asyncFindAuthor(path: String): String {
-        val file = awaitParallelBlocking { FileDAO.findRecord(path) } ?: return Constant.UNKNOWN
-        val user = awaitParallelBlocking { UserDAO.findById(file.author) } ?: return Constant.UNKNOWN
-        return user.username
-    }
 }

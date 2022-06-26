@@ -126,7 +126,7 @@ class VertxHttpAppAssemblyFactory(
     private val registerCenter: VertxServiceRegisterCenter,
     private val provider: UserProvider,
     private val vertx: Vertx = registerCenter.vertx,
-    private val entrance: CoroutineEntrance = registerCenter::startCoroutine
+    private val entrance: CoroutineEntrance = registerCenter::startCoroutine,
 ) {
 
     fun assembles(factories: List<VertxHttpApplication.InstanceFactory>): Router {
@@ -187,7 +187,6 @@ class VertxHttpAppAssemblyFactory(
 
     private fun bodyHandler(): BodyHandler {
         return BodyHandler.create().apply {
-            this.setHandleFileUploads(true)
             this.setDeleteUploadedFilesOnEnd(true)
             this.setMergeFormAttributes(true)
         }

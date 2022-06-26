@@ -34,7 +34,7 @@ abstract class AbstractTimeoutRecycler<K : Any, V : Any> {
      * @param incremental 过期时间(从[datum]开始计算); 单位默认毫秒
      * @param datum 基准值, [datum]+[incremental]最终得到实际的过期时间; 单位默认毫秒
      */
-    fun putTimeoutKeyValuePair(
+    protected fun putTimeoutKeyValuePair(
         key: K, value: V, incremental: Long, datum: Long = currentTimeMillis(),
     ) {
         if (key in valueTable) {
@@ -50,7 +50,7 @@ abstract class AbstractTimeoutRecycler<K : Any, V : Any> {
      *
      * 通过这个方法插入的键值对永远不会被[doRecycle]调用回收
      */
-    fun putKeyValuePair(key: K, value: V) {
+    protected fun putKeyValuePair(key: K, value: V) {
         valueTable[key] = Record(value, 0)
     }
 
@@ -108,7 +108,7 @@ abstract class AbstractTimeoutRecycler<K : Any, V : Any> {
      * @return
      * 返回此次回收有多少键值对被删除
      */
-    fun doRecycle(
+    protected fun doRecycle(
         currentTime: Long = currentTimeMillis(), callback: (Pair<K, V>) -> Unit,
     ): Int {
         if (timeoutTable.isEmpty() || valueTable.isEmpty()) {
@@ -117,7 +117,7 @@ abstract class AbstractTimeoutRecycler<K : Any, V : Any> {
 
         val invalidKeys = LinkedList<K>()
         for ((expiryTime, key) in timeoutTable) {
-            if (expiryTime > currentTime) {
+            if (expiryTime < currentTime) {
                 invalidKeys.add(key)
             }
         }
@@ -139,7 +139,7 @@ abstract class AbstractTimeoutRecycler<K : Any, V : Any> {
      * 处理逻辑非常简单, 如果此键已经不存在, 则不做任何处理;
      * 如果存在, 则先将其从系统中删除, 然后重新使用新的过期时间插入;
      */
-    fun refreshKeyTimeoutInfo(
+    protected fun refreshKeyTimeoutInfo(
         key: K, incremental: Long, datum: Long = currentTimeMillis(),
     ) {
         deleteKey(key).ifNotNull { (_, v) ->
@@ -154,7 +154,7 @@ abstract class AbstractTimeoutRecycler<K : Any, V : Any> {
      * @return
      * 返回被删除的项; 如果此键存在, 则返回此键值对, 如果不存在则返回null
      */
-    fun deleteKey(key: K): Pair<K, V>? {
+    protected fun deleteKey(key: K): Pair<K, V>? {
         val record = valueTable[key] ?: return null
         val timeoutInfo = record.timeoutInfo
         timeoutTable.remove(timeoutInfo)
@@ -162,7 +162,7 @@ abstract class AbstractTimeoutRecycler<K : Any, V : Any> {
         return key to record.value
     }
 
-    class Record<V>(
+    protected class Record<V>(
         val value: V,
         val timeoutInfo: Long,
     )

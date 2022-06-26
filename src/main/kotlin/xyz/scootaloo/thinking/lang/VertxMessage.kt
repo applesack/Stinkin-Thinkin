@@ -32,6 +32,13 @@ interface EventbusMessageHelper : HttpHeaderHelper {
             response().statusCode = state
         }
 
+        ebMessage.getJsonObject(BusJsonConstant.header).ifNotNull { headers ->
+            val response = response()
+            for ((key, value) in headers) {
+                response.putHeader(key, value.toString())
+            }
+        }
+
         when (val contType = ebMessage.getInteger(BusJsonConstant.guide)) {
             MessageType.XML.code -> {
                 val xmlJson = ebMessage.getJsonObject(BusJsonConstant.body)
@@ -57,17 +64,21 @@ interface EventbusMessageHelper : HttpHeaderHelper {
     }
 
     fun buildXmlMessage(
-        shell: String, state: Int = 0, lazy: (StateHolder<Int, Any>) -> Unit,
+        shell: String, state: Int = 0, lazy: (MessageEdit) -> Unit,
     ): SmartJsonMessage {
-        return SmartJsonMessage(state, MessageType.XML.code, shell, null, lazy)
+        val message = MessageEdit()
+        message.extra = shell
+        return SmartJsonMessage(MessageType.XML.code, message, lazy)
     }
 
-    fun buildHtmlMessage(lazy: (StateHolder<Int, Any>) -> Unit): SmartJsonMessage {
-        return SmartJsonMessage(0, MessageType.HTML.code, 0, null, lazy)
+    fun buildHtmlMessage(lazy: (MessageEdit) -> Unit): SmartJsonMessage {
+        val message = MessageEdit()
+        return SmartJsonMessage(MessageType.HTML.code, message, lazy)
     }
 
-    fun buildRawMessage(lazy: (StateHolder<Int, Any>) -> Unit): SmartJsonMessage {
-        return SmartJsonMessage(0, MessageType.RAW.code, 0, null, lazy)
+    fun buildRawMessage(lazy: (MessageEdit) -> Unit): SmartJsonMessage {
+        val message = MessageEdit()
+        return SmartJsonMessage(MessageType.RAW.code, message, lazy)
     }
 
     fun RoutingContext.replyWithXml(xml: String) {
@@ -96,28 +107,33 @@ interface EventbusMessageHelper : HttpHeaderHelper {
     }
 
     class SmartJsonMessage(
-        override var state: Int,
-        private val guide: Int,
-        private val extra: Any? = null,
-        private var body: Any? = null,
-        private val lazy: (StateHolder<Int, Any>) -> Unit,
-    ) : StateHolder<Int, Any>() {
-
-        override var data: Any?
-            get() = body
-            set(value) {
-                body = value
-            }
-
-        fun reply(message: Message<*>) {
-            lazy(this)
+        private val guide: Int = 0,
+        private var message: MessageEdit = MessageEdit(),
+        private val lazy: (MessageEdit) -> Unit,
+    ) {
+        fun reply(request: Message<*>) {
+            lazy(message)
             val content = Json.obj {
                 this[BusJsonConstant.guide] = guide
-                this[BusJsonConstant.state] = state
-                this[BusJsonConstant.extra] = extra
-                this[BusJsonConstant.body] = body
+                this[BusJsonConstant.state] = message.state
+                this[BusJsonConstant.extra] = message.extra
+                this[BusJsonConstant.body] = message.body
+                if (message.header.isNotEmpty()) {
+                    this[BusJsonConstant.header] = message.header
+                }
             }
-            message.reply(content)
+            request.reply(content)
+        }
+    }
+
+    class MessageEdit(
+        var extra: Any? = null,
+        var state: Int = 0,
+        var body: Any? = null,
+        var header: MutableMap<String, String> = HashMap(),
+    ) {
+        fun putHeader(key: String, value: String) {
+            header[key] = value
         }
     }
 
@@ -137,6 +153,7 @@ interface EventbusMessageHelper : HttpHeaderHelper {
         const val state = "_state"
         const val extra = "_extra"
         const val body = "_body"
+        const val header = "_header"
     }
 
 }

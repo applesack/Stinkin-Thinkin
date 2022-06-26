@@ -8,7 +8,7 @@ import xyz.scootaloo.thinking.lang.*
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
 import xyz.scootaloo.thinking.server.dav.domain.UserRecordEntity
 import xyz.scootaloo.thinking.server.dav.service.AccountService
-import xyz.scootaloo.thinking.server.dav.service.internal.UserManager
+import xyz.scootaloo.thinking.server.dav.service.impl.util.UserManager
 
 /**
  * @author flutterdash@qq.com

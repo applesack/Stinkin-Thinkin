@@ -13,7 +13,7 @@ import xyz.scootaloo.thinking.lang.ifNull
 import xyz.scootaloo.thinking.lib.HttpHeaderHelper
 import xyz.scootaloo.thinking.server.dav.application.WebDAVContext
 import xyz.scootaloo.thinking.server.dav.service.StaticResourcesService
-import xyz.scootaloo.thinking.server.dav.service.fs.VirtualFileSystem
+import xyz.scootaloo.thinking.server.dav.service.impl.util.Helper
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
 import xyz.scootaloo.thinking.struct.http.Range
 import xyz.scootaloo.thinking.util.Convert
@@ -39,7 +39,7 @@ object StaticResourcesImpl : SingletonVertxService(), StaticResourcesService {
 
     private object Resources : HttpHeaderHelper {
         suspend fun sendFile(ctx: RoutingContext, filename: String) {
-            val fullFilePath = VirtualFileSystem.fullPath(filename)
+            val fullFilePath = Helper.fullPath(filename)
             try {
                 if (!fs.exists(fullFilePath).await()) {
                     ctx.fail(Status.notFound)

@@ -1,34 +1,33 @@
 package xyz.scootaloo.thinking.server.dav.domain.core
 
 import xyz.scootaloo.thinking.lang.Nameable
-import xyz.scootaloo.thinking.lang.remove
 import xyz.scootaloo.thinking.server.dav.util.PathUtils
 import xyz.scootaloo.thinking.util.NameGroup
-import java.util.LinkedList
+import java.util.*
 
 /**
  * @author flutterdash@qq.com
  * @since 2022/4/23 14:58
  */
 
-class RuleRecord
-
 data class FileMarkChunk(
     var lock: FileLock = UnreachableFileLock,
-    val etag: List<String> = ArrayList()
+    val etag: List<String> = ArrayList(),
 )
 
 class SentryNode(
     override val name: String,
     p: SentryNode? = null,
     private var records: MutableMap<String, FileMarkChunk> = FAKE_MAPPER,
-    private val children: NameGroup<SentryNode> = NameGroup()
+    private val children: NameGroup<SentryNode> = NameGroup(),
 ) : Nameable {
     private val parent: SentryNode = p ?: this
 
+    fun parent(): SentryNode = parent
+    fun isRoot() = (parent == this)
+
     fun hasChild(name: String) = children.has(name)
     fun getChild(): SentryNode = children.get()
-    fun delChild(name: String) = children.del(name)
     fun addChild(member: String) = children.add(SentryNode(member, this))
 
     fun getRecord(file: String = ""): FileMarkChunk? = records[file]
@@ -48,7 +47,7 @@ class SentryNode(
     fun fullPath(): String {
         val pathItems = LinkedList<String>()
         var cur = this
-        while (cur.parent != this) {
+        while (cur.parent != cur) {
             pathItems.addFirst(cur.name)
             cur = cur.parent
         }

@@ -36,18 +36,25 @@ inline fun <T : Any> T?.ifNotNull(block: (T) -> Unit): T? {
     return this
 }
 
-fun <T : Any> Pair<Boolean, T>.getOfNull(): T? {
+inline fun <T : Any> T?.ifNull(block: () -> Unit) {
+    this ?: block()
+}
+
+fun <T : Any, R : Any> T?.transformIfNotNull(trans: (T) -> R): R? {
+    this ?: return null
+    return trans(this)
+}
+
+fun <T : Any> T?.getOrElse(def: T, block: () -> T): T {
+    return this ?: block()
+}
+
+fun <T : Any> Pair<Boolean, T>.getNullable(): T? {
     return if (first) second else null
 }
 
 fun <T : Any> Pair<Boolean, T>.getOrElse(def: T): T {
     return if (first) second else def
-}
-
-inline fun <T : Any> T?.ifNull(block: () -> Unit) {
-    if (this == null) {
-        block()
-    }
 }
 
 infix fun String.like(other: String): Boolean {
@@ -95,6 +102,10 @@ fun interface Factory<In, Out> {
 }
 
 class ValueHolder<T>(private val value: T?) {
+    fun nullable(): T? {
+        return value
+    }
+
     operator fun invoke(): T {
         return value!!
     }
@@ -131,6 +142,7 @@ private class StandardUnitTest : TestDsl {
         StateValueHolder<Int, String>(
             0, ValueHolder.empty()
         )
+        intArrayOf().sortDescending()
     }
 
 }

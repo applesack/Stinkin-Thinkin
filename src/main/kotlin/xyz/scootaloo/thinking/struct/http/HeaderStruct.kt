@@ -84,4 +84,13 @@ class Range(
 class Timeout(
     val amount: Int,
     val infinite: Boolean
-)
+) {
+    fun display(): String {
+        val timout = "Second-$amount"
+        return if (infinite) {
+            "$timout,Infinite"
+        } else {
+            timout
+        }
+    }
+}

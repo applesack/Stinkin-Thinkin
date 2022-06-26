@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonObject
 import org.junit.jupiter.api.Test
 import xyz.scootaloo.thinking.lang.TestDsl
 import xyz.scootaloo.thinking.lang.set
+import xyz.scootaloo.thinking.util.Convert
 
 /**
  * @author flutterdash@qq.com
@@ -18,14 +19,19 @@ object MultiStatus {
     fun build(
         receiver: JsonObject, subject: String, code: Int,
         httpVersion: String = "HTTP/1.1",
+        uriEncode: Boolean = true
     ) {
-        val details = HttpResponseStatus.valueOf(code)
-        receiver[href] = subject
-        receiver[status] = "$httpVersion $code ${details.reasonPhrase()}"
+        receiver[href] = if (uriEncode) Convert.encodeUriComponent(subject) else subject
+        receiver[status] = template(httpVersion, code)
     }
 
-    fun statusOf(code: Int): String {
-        return HttpResponseStatus.valueOf(code).reasonPhrase()
+    fun statusOf(code: Int, httpVersion: String = "HTTP/1.1"): String {
+        return template(httpVersion, code)
+    }
+
+    private fun template(httpVersion: String, code: Int): String {
+        val details = HttpResponseStatus.valueOf(code)
+        return "$httpVersion $code ${details.reasonPhrase()}"
     }
 
 }
@@ -49,7 +55,7 @@ private class MultiStatusUnitTest : TestDsl {
     @Test
     fun test2() {
         val json = JsonObject()
-        MultiStatus.build(json, "/test", 0)
+        MultiStatus.build(json, "/test", 200)
         json.log()
     }
 

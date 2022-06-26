@@ -9,7 +9,6 @@ import io.vertx.core.eventbus.Message
 import io.vertx.core.file.FileSystem
 import io.vertx.kotlin.core.vertxOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.slf4j.Logger

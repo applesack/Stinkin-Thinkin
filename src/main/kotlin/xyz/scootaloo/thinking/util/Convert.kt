@@ -3,7 +3,8 @@ package xyz.scootaloo.thinking.util
 import cn.hutool.core.codec.Base64
 import cn.hutool.crypto.digest.MD5
 import io.vertx.core.net.impl.URIDecoder
-import java.net.URLEncoder
+import org.junit.jupiter.api.Test
+import xyz.scootaloo.thinking.lang.TestDsl
 
 /**
  * @author flutterdash@qq.com
@@ -12,6 +13,7 @@ import java.net.URLEncoder
 object Convert {
 
     private val md5 = MD5()
+    private val encoder = cn.hutool.core.net.URLEncoder.createDefault()
 
     fun base64encode(data: String): String {
         return Base64.encode(data)
@@ -30,7 +32,18 @@ object Convert {
     }
 
     fun encodeUriComponent(uri: String): String {
-        return URLEncoder.encode(uri, "UTF-8")
+        return encoder.encode(uri, Charsets.UTF_8)
+    }
+
+}
+
+private class ConvertUnitTest : TestDsl {
+
+    @Test
+    fun test() {
+        Convert.encodeUriComponent("/").log()
+        Convert.encodeUriComponent("/你好世界").log()
+        Convert.encodeUriComponent("/你好世界/你好世界hello.txt").log()
     }
 
 }

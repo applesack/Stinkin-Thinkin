@@ -38,7 +38,7 @@ fun HttpHeader.parseDepthAsJson(text: String): JsonObject {
         when (ch) {
             '0' -> depth = 0
             '1' -> depth = 1
-            'y' -> depth = 1
+            'y' -> depth = -1
             'r' -> noRoot = true
         }
     }

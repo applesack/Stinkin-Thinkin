@@ -67,7 +67,7 @@ class AFileAdapter(
 
         private fun of(path: String, author: String, props: FileProps): AFileAdapter {
             val href = PathUtils.normalize(path)
-            val display = PathUtils.mainName(href)
+            val display = PathUtils.displayName(href)
             return AFileAdapter(
                 href = href,
                 displayName = display,
@@ -84,9 +84,11 @@ class RegularFile(adapter: AFileAdapter, val size: Long) : AFile by adapter
 
 class Directory(adapter: AFileAdapter, override var type: String = "collection") : AFile by adapter
 
-object UnreachableFile : AFile {
+object UnreachableFile : AccessRestrictedFile("Unreachable")
+
+open class AccessRestrictedFile(
     override val href: String
-        get() = throw java.lang.IllegalStateException()
+) : AFile {
     override val displayName: String
         get() = throw java.lang.IllegalStateException()
     override val author: String
@@ -106,4 +108,12 @@ object UnreachableFile : AFile {
         set(value) {
             throw java.lang.IllegalStateException("$value")
         }
+
+    override fun equals(other: Any?): Boolean {
+        return this === other
+    }
+
+    override fun hashCode(): Int {
+        return System.identityHashCode(this)
+    }
 }
